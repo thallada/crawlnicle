@@ -1,0 +1,20 @@
+[package]
+name = "crawlect"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1"
+axum = "0.6"
+chrono = { version = "0.4", features = ["serde"] }
+dotenvy = "0.15"
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "postgres", "macros", "migrate", "chrono"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.4", features = ["trace"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
