@@ -27,9 +27,9 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&pool).await?;
 
     let app = Router::new()
-        .route("/items", get(handlers::items::get))
-        .route("/item", post(handlers::item::post))
-        .route("/item/:id", get(handlers::item::get))
+        .route("/v1/items", get(handlers::items::get))
+        .route("/v1/item", post(handlers::item::post))
+        .route("/v1/item/:id", get(handlers::item::get))
         .with_state(pool)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 

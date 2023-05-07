@@ -1,4 +1,3 @@
-use anyhow::Context;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -21,21 +20,19 @@ pub struct CreateItem {
     description: Option<String>,
 }
 
-pub async fn get_item(pool: PgPool, id: i32) -> anyhow::Result<Item> {
+pub async fn get_item(pool: PgPool, id: i32) -> sqlx::Result<Item> {
     sqlx::query_as!(Item, "SELECT * FROM items WHERE id = $1", id)
         .fetch_one(&pool)
         .await
-        .context("Failed to fetch item")
 }
 
-pub async fn get_items(pool: PgPool) -> anyhow::Result<Vec<Item>> {
+pub async fn get_items(pool: PgPool) -> sqlx::Result<Vec<Item>> {
     sqlx::query_as!(Item, "SELECT * FROM items")
         .fetch_all(&pool)
         .await
-        .context("Failed to fetch items")
 }
 
-pub async fn create_item(pool: PgPool, payload: CreateItem) -> anyhow::Result<Item> {
+pub async fn create_item(pool: PgPool, payload: CreateItem) -> sqlx::Result<Item> {
     sqlx::query_as!(
         Item,
         "INSERT INTO items (
@@ -49,5 +46,4 @@ pub async fn create_item(pool: PgPool, payload: CreateItem) -> anyhow::Result<It
     )
     .fetch_one(&pool)
     .await
-    .context("Failed to create item")
 }

@@ -1,26 +1,67 @@
-use axum::{http::StatusCode, response::{IntoResponse, Response}};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::Json;
+use tracing::error;
+use serde_with::DisplayFromStr;
+use validator::ValidationErrors;
 
-// Make our own error that wraps `anyhow::Error`.
-pub struct AppError(anyhow::Error);
+/// An API-friendly error type.
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    /// A SQLx call returned an error.
+    ///
+    /// The exact error contents are not reported to the user in order to avoid leaking
+    /// information about database internals.
+    #[error("an internal database error occurred")]
+    Sqlx(#[from] sqlx::Error),
 
-// Tell axum how to convert `AppError` into a response.
-impl IntoResponse for AppError {
+    /// Similarly, we don't want to report random `anyhow` errors to the user.
+    #[error("an internal server error occurred")]
+    Anyhow(#[from] anyhow::Error),
+
+    #[error("validation error in request body")]
+    InvalidEntity(#[from] ValidationErrors),
+}
+
+impl IntoResponse for Error {
     fn into_response(self) -> Response {
+        #[serde_with::serde_as]
+        #[serde_with::skip_serializing_none]
+        #[derive(serde::Serialize)]
+        struct ErrorResponse<'a> {
+            // Serialize the `Display` output as the error message
+            #[serde_as(as = "DisplayFromStr")]
+            message: &'a Error,
+
+            errors: Option<&'a ValidationErrors>,
+        }
+
+        let errors = match &self {
+            Error::InvalidEntity(errors) => Some(errors),
+            _ => None,
+        };
+
+        error!("API error: {:?}", self);
+
         (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
+            self.status_code(),
+            Json(ErrorResponse {
+                message: &self,
+                errors,
+            }),
         )
             .into_response()
     }
 }
 
-// This enables using `?` on functions that return `Result<_, anyhow::Error>` to turn them into
-// `Result<_, AppError>`. That way you don't need to do that manually.
-impl<E> From<E> for AppError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(err: E) -> Self {
-        Self(err.into())
+impl Error {
+    fn status_code(&self) -> StatusCode {
+        use Error::*;
+
+        match self {
+            Sqlx(sqlx::Error::RowNotFound) => StatusCode::NOT_FOUND,
+            Sqlx(_) | Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            InvalidEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
+        }
     }
 }
