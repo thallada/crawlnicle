@@ -21,7 +21,12 @@ pub enum Error {
 
     #[error("validation error in request body")]
     InvalidEntity(#[from] ValidationErrors),
+
+    #[error("{0} not found")]
+    NotFound(&'static str),
 }
+
+pub type Result<T, E = Error> = ::std::result::Result<T, E>;
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
@@ -59,7 +64,7 @@ impl Error {
         use Error::*;
 
         match self {
-            Sqlx(sqlx::Error::RowNotFound) => StatusCode::NOT_FOUND,
+            NotFound(_) => StatusCode::NOT_FOUND,
             Sqlx(_) | Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
             InvalidEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
         }
