@@ -27,6 +27,9 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&pool).await?;
 
     let app = Router::new()
+        .route("/v1/feeds", get(handlers::feeds::get))
+        .route("/v1/feed", post(handlers::feed::post))
+        .route("/v1/feed/:id", get(handlers::feed::get))
         .route("/v1/items", get(handlers::items::get))
         .route("/v1/item", post(handlers::item::post))
         .route("/v1/item/:id", get(handlers::item::get))

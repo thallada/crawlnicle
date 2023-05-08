@@ -22,8 +22,11 @@ pub enum Error {
     #[error("validation error in request body")]
     InvalidEntity(#[from] ValidationErrors),
 
-    #[error("{0} not found")]
-    NotFound(&'static str),
+    #[error("{0}: {1} not found")]
+    NotFound(&'static str, i32),
+
+    #[error("referenced {0}: {1} not found")]
+    RelationNotFound(&'static str, i32),
 }
 
 pub type Result<T, E = Error> = ::std::result::Result<T, E>;
@@ -64,9 +67,9 @@ impl Error {
         use Error::*;
 
         match self {
-            NotFound(_) => StatusCode::NOT_FOUND,
+            NotFound(_, _) => StatusCode::NOT_FOUND,
             Sqlx(_) | Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            InvalidEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            InvalidEntity(_) | RelationNotFound(_, _) => StatusCode::UNPROCESSABLE_ENTITY,
         }
     }
 }

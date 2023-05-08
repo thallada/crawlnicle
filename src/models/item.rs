@@ -11,6 +11,7 @@ pub struct Item {
     title: String,
     url: String,
     description: Option<String>,
+    feed_id: i32,
     created_at: NaiveDateTime,
     updated_at: NaiveDateTime,
     deleted_at: Option<NaiveDateTime>,
@@ -24,6 +25,8 @@ pub struct CreateItem {
     url: String,
     #[validate(length(max = 524288))]
     description: Option<String>,
+    #[validate(range(min = 1))]
+    feed_id: i32,
 }
 
 pub async fn get_item(pool: PgPool, id: i32) -> Result<Item> {
@@ -32,7 +35,7 @@ pub async fn get_item(pool: PgPool, id: i32) -> Result<Item> {
         .await
         .map_err(|error| {
             if let sqlx::error::Error::RowNotFound = error {
-                return Error::NotFound("item");
+                return Error::NotFound("item", id);
             }
             Error::Sqlx(error)
         })
@@ -46,17 +49,26 @@ pub async fn get_items(pool: PgPool) -> sqlx::Result<Vec<Item>> {
 
 pub async fn create_item(pool: PgPool, payload: CreateItem) -> Result<Item> {
     payload.validate()?;
-    Ok(sqlx::query_as!(
+    sqlx::query_as!(
         Item,
         "INSERT INTO items (
-            title, url, description, created_at, updated_at
+            title, url, description, feed_id, created_at, updated_at
         ) VALUES (
-            $1, $2, $3, now(), now()
+            $1, $2, $3, $4, now(), now()
         ) RETURNING *",
         payload.title,
         payload.url,
-        payload.description
+        payload.description,
+        payload.feed_id,
     )
     .fetch_one(&pool)
-    .await?)
+    .await
+    .map_err(|error| {
+        if let sqlx::error::Error::Database(ref psql_error) = error {
+            if psql_error.code().as_deref() == Some("23503") {
+                return Error::RelationNotFound("feed", payload.feed_id);
+            }
+        }
+        Error::Sqlx(error)
+    })
 }

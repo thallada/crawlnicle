@@ -1,13 +1,13 @@
-use axum::{extract::{State, Path}, Json};
+use axum::{
+    extract::{Path, State},
+    Json,
+};
 use sqlx::PgPool;
 
 use crate::error::Error;
 use crate::models::item::{create_item, get_item, CreateItem, Item};
 
-pub async fn get(
-    State(pool): State<PgPool>,
-    Path(id): Path<i32>,
-) -> Result<Json<Item>, Error> {
+pub async fn get(State(pool): State<PgPool>, Path(id): Path<i32>) -> Result<Json<Item>, Error> {
     Ok(Json(get_item(pool, id).await?))
 }
 
