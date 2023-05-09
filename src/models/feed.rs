@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -13,29 +15,40 @@ pub enum FeedType {
     Rss,
 }
 
+impl FromStr for FeedType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "atom" => Ok(FeedType::Atom),
+            "rss" => Ok(FeedType::Rss),
+            _ => Err(format!("invalid feed type: {}", s)),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Feed {
-    id: i32,
-    title: String,
-    url: String,
+    pub id: i32,
+    pub title: String,
+    pub url: String,
     #[serde(rename = "type")]
-    feed_type: FeedType,
-    description: Option<String>,
-    created_at: NaiveDateTime,
-    updated_at: NaiveDateTime,
-    deleted_at: Option<NaiveDateTime>,
+    pub feed_type: FeedType,
+    pub description: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub deleted_at: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateFeed {
     #[validate(length(max = 255))]
-    title: String,
+    pub title: String,
     #[validate(url)]
-    url: String,
+    pub url: String,
     #[serde(rename = "type")]
-    feed_type: FeedType,
+    pub feed_type: FeedType,
     #[validate(length(max = 524288))]
-    description: Option<String>,
+    pub description: Option<String>,
 }
 
 pub async fn get_feed(pool: PgPool, id: i32) -> Result<Feed> {

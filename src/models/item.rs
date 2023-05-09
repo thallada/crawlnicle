@@ -7,26 +7,26 @@ use crate::error::{Error, Result};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Item {
-    id: i32,
-    title: String,
-    url: String,
-    description: Option<String>,
-    feed_id: i32,
-    created_at: NaiveDateTime,
-    updated_at: NaiveDateTime,
-    deleted_at: Option<NaiveDateTime>,
+    pub id: i32,
+    pub title: String,
+    pub url: String,
+    pub description: Option<String>,
+    pub feed_id: i32,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub deleted_at: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateItem {
     #[validate(length(max = 255))]
-    title: String,
+    pub title: String,
     #[validate(url)]
-    url: String,
+    pub url: String,
     #[validate(length(max = 524288))]
-    description: Option<String>,
+    pub description: Option<String>,
     #[validate(range(min = 1))]
-    feed_id: i32,
+    pub feed_id: i32,
 }
 
 pub async fn get_item(pool: PgPool, id: i32) -> Result<Item> {

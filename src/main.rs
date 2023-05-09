@@ -9,9 +9,7 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::debug;
 
-mod error;
-mod handlers;
-mod models;
+use lib::handlers;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

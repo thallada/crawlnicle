@@ -2,18 +2,30 @@
 name = "crawlect"
 version = "0.1.0"
 edition = "2021"
+default-run = "crawlect"
+
+[lib]
+name = "lib"
+path = "src/lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow = "1"
+argh = "0.1"
 axum = "0.6"
 chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 serde_with = "3"
-sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "postgres", "macros", "migrate", "chrono"] }
+sqlx = { version = "0.6", features = [
+  "runtime-tokio-native-tls",
+  "postgres",
+  "macros",
+  "migrate",
+  "chrono",
+] }
 thiserror = "1"
 tokio = { version = "1", features = ["full"] }
 tower = "0.4"
