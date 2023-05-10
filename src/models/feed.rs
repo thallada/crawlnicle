@@ -51,7 +51,7 @@ pub struct CreateFeed {
     pub description: Option<String>,
 }
 
-pub async fn get_feed(pool: PgPool, id: i32) -> Result<Feed> {
+pub async fn get_feed(pool: &PgPool, id: i32) -> Result<Feed> {
     sqlx::query_as!(
         Feed,
         // Unable to SELECT * here due to https://github.com/launchbadge/sqlx/issues/1004
@@ -67,7 +67,7 @@ pub async fn get_feed(pool: PgPool, id: i32) -> Result<Feed> {
         FROM feeds WHERE id = $1"#,
         id
     )
-    .fetch_one(&pool)
+    .fetch_one(pool)
     .await
     .map_err(|error| {
         if let sqlx::error::Error::RowNotFound = error {
@@ -77,7 +77,7 @@ pub async fn get_feed(pool: PgPool, id: i32) -> Result<Feed> {
     })
 }
 
-pub async fn get_feeds(pool: PgPool) -> sqlx::Result<Vec<Feed>> {
+pub async fn get_feeds(pool: &PgPool) -> sqlx::Result<Vec<Feed>> {
     sqlx::query_as!(
         Feed,
         r#"SELECT
@@ -89,12 +89,14 @@ pub async fn get_feeds(pool: PgPool) -> sqlx::Result<Vec<Feed>> {
             created_at,
             updated_at,
             deleted_at
-        FROM feeds"#)
-        .fetch_all(&pool)
-        .await
+        FROM feeds
+        WHERE deleted_at IS NULL"#
+    )
+    .fetch_all(pool)
+    .await
 }
 
-pub async fn create_feed(pool: PgPool, payload: CreateFeed) -> Result<Feed> {
+pub async fn create_feed(pool: &PgPool, payload: CreateFeed) -> Result<Feed> {
     payload.validate()?;
     Ok(sqlx::query_as!(
         Feed,
@@ -117,6 +119,13 @@ pub async fn create_feed(pool: PgPool, payload: CreateFeed) -> Result<Feed> {
         payload.feed_type as FeedType,
         payload.description
     )
-    .fetch_one(&pool)
+    .fetch_one(pool)
     .await?)
+}
+
+pub async fn delete_feed(pool: &PgPool, id: i32) -> Result<()> {
+    sqlx::query!("UPDATE feeds SET deleted_at = now() WHERE id = $1", id)
+        .execute(pool)
+        .await?;
+    Ok(())
 }

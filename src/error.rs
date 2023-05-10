@@ -25,8 +25,8 @@ pub enum Error {
     #[error("{0}: {1} not found")]
     NotFound(&'static str, i32),
 
-    #[error("referenced {0}: {1} not found")]
-    RelationNotFound(&'static str, i32),
+    #[error("referenced {0} not found")]
+    RelationNotFound(&'static str),
 }
 
 pub type Result<T, E = Error> = ::std::result::Result<T, E>;
@@ -69,7 +69,7 @@ impl Error {
         match self {
             NotFound(_, _) => StatusCode::NOT_FOUND,
             Sqlx(_) | Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            InvalidEntity(_) | RelationNotFound(_, _) => StatusCode::UNPROCESSABLE_ENTITY,
+            InvalidEntity(_) | RelationNotFound(_) => StatusCode::UNPROCESSABLE_ENTITY,
         }
     }
 }
