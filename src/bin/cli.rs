@@ -10,7 +10,7 @@ use lib::models::feed::{create_feed, delete_feed, CreateFeed, FeedType};
 use lib::models::item::{create_item, delete_item, CreateItem};
 
 #[derive(FromArgs)]
-/// CLI for crawlect
+/// CLI for crawlnicle
 struct Args {
     #[argh(subcommand)]
     commands: Commands,
