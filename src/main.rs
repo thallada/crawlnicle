@@ -28,9 +28,9 @@ async fn main() -> anyhow::Result<()> {
         .route("/v1/feeds", get(handlers::feeds::get))
         .route("/v1/feed", post(handlers::feed::post))
         .route("/v1/feed/:id", get(handlers::feed::get))
-        .route("/v1/items", get(handlers::items::get))
-        .route("/v1/item", post(handlers::item::post))
-        .route("/v1/item/:id", get(handlers::item::get))
+        .route("/v1/entries", get(handlers::entries::get))
+        .route("/v1/entry", post(handlers::entry::post))
+        .route("/v1/entry/:id", get(handlers::entry::get))
         .with_state(pool)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 

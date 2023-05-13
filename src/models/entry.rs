@@ -6,7 +6,7 @@ use validator::{Validate, ValidationErrors};
 use crate::error::{Error, Result};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Item {
+pub struct Entry {
     pub id: i32,
     pub title: String,
     pub url: String,
@@ -18,7 +18,7 @@ pub struct Item {
 }
 
 #[derive(Debug, Deserialize, Validate)]
-pub struct CreateItem {
+pub struct CreateEntry {
     #[validate(length(max = 255))]
     pub title: String,
     #[validate(url)]
@@ -29,29 +29,29 @@ pub struct CreateItem {
     pub feed_id: i32,
 }
 
-pub async fn get_item(pool: &PgPool, id: i32) -> Result<Item> {
-    sqlx::query_as!(Item, "SELECT * FROM items WHERE id = $1", id)
+pub async fn get_entry(pool: &PgPool, id: i32) -> Result<Entry> {
+    sqlx::query_as!(Entry, "SELECT * FROM entries WHERE id = $1", id)
         .fetch_one(pool)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::RowNotFound = error {
-                return Error::NotFound("item", id);
+                return Error::NotFound("entry", id);
             }
             Error::Sqlx(error)
         })
 }
 
-pub async fn get_items(pool: &PgPool) -> sqlx::Result<Vec<Item>> {
-    sqlx::query_as!(Item, "SELECT * FROM items WHERE deleted_at IS NULL")
+pub async fn get_entries(pool: &PgPool) -> sqlx::Result<Vec<Entry>> {
+    sqlx::query_as!(Entry, "SELECT * FROM entries WHERE deleted_at IS NULL")
         .fetch_all(pool)
         .await
 }
 
-pub async fn create_item(pool: &PgPool, payload: CreateItem) -> Result<Item> {
+pub async fn create_entry(pool: &PgPool, payload: CreateEntry) -> Result<Entry> {
     payload.validate()?;
     sqlx::query_as!(
-        Item,
-        "INSERT INTO items (
+        Entry,
+        "INSERT INTO entries (
             title, url, description, feed_id, created_at, updated_at
         ) VALUES (
             $1, $2, $3, $4, now(), now()
@@ -73,21 +73,21 @@ pub async fn create_item(pool: &PgPool, payload: CreateItem) -> Result<Item> {
     })
 }
 
-pub async fn create_items(pool: &PgPool, payload: Vec<CreateItem>) -> Result<Vec<Item>> {
+pub async fn create_entries(pool: &PgPool, payload: Vec<Create<Entry>) -> Result<Vec<Entry>> {
     let mut titles = Vec::with_capacity(payload.len());
     let mut urls = Vec::with_capacity(payload.len());
     let mut descriptions: Vec<Option<String>> = Vec::with_capacity(payload.len());
     let mut feed_ids = Vec::with_capacity(payload.len());
-    payload.iter().map(|item| {
-        titles.push(item.title.clone());
-        urls.push(item.url.clone());
-        descriptions.push(item.description.clone());
-        feed_ids.push(item.feed_id);
-        item.validate()
+    payload.iter().map(|entry| {
+        titles.push(entry.title.clone());
+        urls.push(entry.url.clone());
+        descriptions.push(entry.description.clone());
+        feed_ids.push(entry.feed_id);
+        entry.validate()
     }).collect::<Result<Vec<()>, ValidationErrors>>()?;
     sqlx::query_as!(
-        Item,
-        "INSERT INTO items (
+        Entry,
+        "INSERT INTO entries (
             title, url, description, feed_id, created_at, updated_at
         ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::int[])
         RETURNING *",
@@ -108,21 +108,21 @@ pub async fn create_items(pool: &PgPool, payload: Vec<CreateItem>) -> Result<Vec
     })
 }
 
-pub async fn upsert_items(pool: &PgPool, payload: Vec<CreateItem>) -> Result<Vec<Item>> {
+pub async fn upsert_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<Vec<Entry>> {
     let mut titles = Vec::with_capacity(payload.len());
     let mut urls = Vec::with_capacity(payload.len());
     let mut descriptions: Vec<Option<String>> = Vec::with_capacity(payload.len());
     let mut feed_ids = Vec::with_capacity(payload.len());
-    payload.iter().map(|item| {
-        titles.push(item.title.clone());
-        urls.push(item.url.clone());
-        descriptions.push(item.description.clone());
-        feed_ids.push(item.feed_id);
-        item.validate()
+    payload.iter().map(|entry| {
+        titles.push(entry.title.clone());
+        urls.push(entry.url.clone());
+        descriptions.push(entry.description.clone());
+        feed_ids.push(entry.feed_id);
+        entry.validate()
     }).collect::<Result<Vec<()>, ValidationErrors>>()?;
     sqlx::query_as!(
-        Item,
-        "INSERT INTO items (
+        Entry,
+        "INSERT INTO entries (
             title, url, description, feed_id, created_at, updated_at
         ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::int[])
         ON CONFLICT DO NOTHING
@@ -144,8 +144,8 @@ pub async fn upsert_items(pool: &PgPool, payload: Vec<CreateItem>) -> Result<Vec
     })
 }
 
-pub async fn delete_item(pool: &PgPool, id: i32) -> Result<()> {
-    sqlx::query!("UPDATE items SET deleted_at = now() WHERE id = $1", id)
+pub async fn delete_entry(pool: &PgPool, id: i32) -> Result<()> {
+    sqlx::query!("UPDATE entries SET deleted_at = now() WHERE id = $1", id)
         .execute(pool)
         .await?;
     Ok(())

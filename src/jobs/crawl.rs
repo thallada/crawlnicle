@@ -4,9 +4,9 @@ use sqlx::PgPool;
 use tracing::info;
 
 use crate::models::feed::get_feeds;
-use crate::models::item::{upsert_items, CreateItem};
+use crate::models::entry::{upsert_entries, CreateEntry};
 
-/// For every feed in the database, fetches the feed, parses it, and saves new items to the
+/// For every feed in the database, fetches the feed, parses it, and saves new entries to the
 /// database.
 pub async fn crawl(pool: &PgPool) -> anyhow::Result<()> {
     let client = Client::new();
@@ -16,7 +16,7 @@ pub async fn crawl(pool: &PgPool) -> anyhow::Result<()> {
         let parsed_feed = parser::parse(&bytes[..])?;
         let mut payload = Vec::with_capacity(parsed_feed.entries.len());
         for entry in parsed_feed.entries {
-            let item = CreateItem {
+            let entry = CreateEntry {
                 title: entry
                     .title
                     .map_or_else(|| "No title".to_string(), |t| t.content),
@@ -27,10 +27,10 @@ pub async fn crawl(pool: &PgPool) -> anyhow::Result<()> {
                 description: entry.summary.map(|s| s.content),
                 feed_id: feed.id,
             };
-            payload.push(item);
+            payload.push(entry);
         }
-        let items = upsert_items(pool, payload).await?;
-        info!("Created {} items for feed {}", items.len(), feed.id);
+        let entries = upsert_entries(pool, payload).await?;
+        info!("Created {} entries for feed {}", entries.len(), feed.id);
     }
     Ok(())
 }

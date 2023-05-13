@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS "feeds" (
 CREATE INDEX "feeds_deleted_at" ON "feeds" ("deleted_at");
 CREATE UNIQUE INDEX "feeds_url" ON "feeds" ("url");
 
-CREATE TABLE IF NOT EXISTS "items" (
+CREATE TABLE IF NOT EXISTS "entries" (
     "id" SERIAL PRIMARY KEY NOT NULL,
     "title" VARCHAR(255) NOT NULL,
     "url" VARCHAR(2048) NOT NULL,
@@ -23,5 +23,5 @@ CREATE TABLE IF NOT EXISTS "items" (
     "updated_at" timestamp(3) NOT NULL,
     "deleted_at" timestamp(3)
 );
-CREATE INDEX "items_deleted_at" ON "items" ("deleted_at");
-CREATE UNIQUE INDEX "items_url_and_feed_id" ON "items" ("url", "feed_id");
+CREATE INDEX "entries_deleted_at" ON "entries" ("deleted_at");
+CREATE UNIQUE INDEX "entries_url_and_feed_id" ON "entries" ("url", "feed_id");

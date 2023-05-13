@@ -1,4 +1,4 @@
 pub mod feed;
 pub mod feeds;
-pub mod item;
-pub mod items;
+pub mod entry;
+pub mod entries;

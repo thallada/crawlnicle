@@ -7,7 +7,7 @@ use tracing::info;
 
 use lib::jobs::crawl::crawl;
 use lib::models::feed::{create_feed, delete_feed, CreateFeed, FeedType};
-use lib::models::item::{create_item, delete_item, CreateItem};
+use lib::models::entry::{create_entry, delete_entry, CreateEntry};
 
 #[derive(FromArgs)]
 /// CLI for crawlnicle
@@ -21,8 +21,8 @@ struct Args {
 enum Commands {
     AddFeed(AddFeed),
     DeleteFeed(DeleteFeed),
-    AddItem(AddItem),
-    DeleteItem(DeleteItem),
+    AddEntry(AddEntry),
+    DeleteEntry(DeleteEntry),
     Crawl(Crawl),
 }
 
@@ -54,34 +54,34 @@ struct DeleteFeed {
 }
 
 #[derive(FromArgs)]
-/// Add an item to the database
-#[argh(subcommand, name = "add-item")]
-struct AddItem {
+/// Add an entry to the database
+#[argh(subcommand, name = "add-entry")]
+struct AddEntry {
     #[argh(option)]
-    /// title of the item (max 255 characters)
+    /// title of the entry (max 255 characters)
     title: String,
     #[argh(option)]
-    /// URL of the item (max 2048 characters)
+    /// URL of the entry (max 2048 characters)
     url: String,
     #[argh(option)]
-    /// description of the item
+    /// description of the entry
     description: Option<String>,
     #[argh(option)]
-    /// source feed for the item
+    /// source feed for the entry
     feed_id: i32,
 }
 
 #[derive(FromArgs)]
-/// Delete an item from the database
-#[argh(subcommand, name = "delete-item")]
-struct DeleteItem {
+/// Delete an entry from the database
+#[argh(subcommand, name = "delete-entry")]
+struct DeleteEntry {
     #[argh(positional)]
-    /// id of the item to delete
+    /// id of the entry to delete
     id: i32,
 }
 
 #[derive(FromArgs)]
-/// Delete an item from the database
+/// Delete an entry from the database
 #[argh(subcommand, name = "crawl")]
 struct Crawl {}
 
@@ -118,10 +118,10 @@ pub async fn main() -> Result<()> {
             delete_feed(&pool, args.id).await?;
             info!("Deleted feed with id {}", args.id);
         }
-        Commands::AddItem(args) => {
-            let item = create_item(
+        Commands::AddEntry(args) => {
+            let entry = create_entry(
                 &pool,
-                CreateItem {
+                CreateEntry {
                     title: args.title,
                     url: args.url,
                     description: args.description,
@@ -129,11 +129,11 @@ pub async fn main() -> Result<()> {
                 },
             )
             .await?;
-            info!("Created item with id {}", item.id);
+            info!("Created entry with id {}", entry.id);
         }
-        Commands::DeleteItem(args) => {
-            delete_item(&pool, args.id).await?;
-            info!("Deleted item with id {}", args.id);
+        Commands::DeleteEntry(args) => {
+            delete_entry(&pool, args.id).await?;
+            info!("Deleted entry with id {}", args.id);
         }
         Commands::Crawl(_) => {
             info!("Crawling...");
