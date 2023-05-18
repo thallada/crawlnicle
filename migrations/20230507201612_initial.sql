@@ -2,7 +2,7 @@ CREATE TYPE feed_type AS ENUM ('atom', 'rss');
 
 CREATE TABLE IF NOT EXISTS "feeds" (
     "id" SERIAL PRIMARY KEY NOT NULL,
-    "title" VARCHAR(255) NOT NULL,
+    "title" VARCHAR(255),
     "url" VARCHAR(2048) NOT NULL,
     "type" feed_type NOT NULL,
     "description" TEXT,
@@ -15,7 +15,7 @@ CREATE UNIQUE INDEX "feeds_url" ON "feeds" ("url");
 
 CREATE TABLE IF NOT EXISTS "entries" (
     "id" SERIAL PRIMARY KEY NOT NULL,
-    "title" VARCHAR(255) NOT NULL,
+    "title" VARCHAR(255),
     "url" VARCHAR(2048) NOT NULL,
     "description" TEXT,
     "feed_id" INTEGER REFERENCES "feeds"(id) NOT NULL,

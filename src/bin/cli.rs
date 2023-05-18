@@ -32,7 +32,7 @@ enum Commands {
 struct AddFeed {
     #[argh(option)]
     /// title of the feed (max 255 characters)
-    title: String,
+    title: Option<String>,
     #[argh(option)]
     /// URL of the feed (max 2048 characters)
     url: String,
@@ -59,7 +59,7 @@ struct DeleteFeed {
 struct AddEntry {
     #[argh(option)]
     /// title of the entry (max 255 characters)
-    title: String,
+    title: Option<String>,
     #[argh(option)]
     /// URL of the entry (max 2048 characters)
     url: String,

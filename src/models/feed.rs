@@ -29,7 +29,7 @@ impl FromStr for FeedType {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Feed {
     pub id: i32,
-    pub title: String,
+    pub title: Option<String>,
     pub url: String,
     #[serde(rename = "type")]
     pub feed_type: FeedType,
@@ -42,7 +42,7 @@ pub struct Feed {
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateFeed {
     #[validate(length(max = 255))]
-    pub title: String,
+    pub title: Option<String>,
     #[validate(url)]
     pub url: String,
     #[serde(rename = "type")]

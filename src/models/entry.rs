@@ -8,7 +8,7 @@ use crate::error::{Error, Result};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entry {
     pub id: i32,
-    pub title: String,
+    pub title: Option<String>,
     pub url: String,
     pub description: Option<String>,
     pub feed_id: i32,
@@ -20,7 +20,7 @@ pub struct Entry {
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateEntry {
     #[validate(length(max = 255))]
-    pub title: String,
+    pub title: Option<String>,
     #[validate(url)]
     pub url: String,
     #[validate(length(max = 524288))]
@@ -73,7 +73,7 @@ pub async fn create_entry(pool: &PgPool, payload: CreateEntry) -> Result<Entry> 
     })
 }
 
-pub async fn create_entries(pool: &PgPool, payload: Vec<Create<Entry>) -> Result<Vec<Entry>> {
+pub async fn create_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<Vec<Entry>> {
     let mut titles = Vec::with_capacity(payload.len());
     let mut urls = Vec::with_capacity(payload.len());
     let mut descriptions: Vec<Option<String>> = Vec::with_capacity(payload.len());
@@ -91,7 +91,7 @@ pub async fn create_entries(pool: &PgPool, payload: Vec<Create<Entry>) -> Result
             title, url, description, feed_id, created_at, updated_at
         ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::int[])
         RETURNING *",
-        titles.as_slice(),
+        titles.as_slice() as &[Option<String>],
         urls.as_slice(),
         descriptions.as_slice() as &[Option<String>],
         feed_ids.as_slice(),
@@ -127,7 +127,7 @@ pub async fn upsert_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
         ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::int[])
         ON CONFLICT DO NOTHING
         RETURNING *",
-        titles.as_slice(),
+        titles.as_slice() as &[Option<String>],
         urls.as_slice(),
         descriptions.as_slice() as &[Option<String>],
         feed_ids.as_slice(),
