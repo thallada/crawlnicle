@@ -3,9 +3,11 @@ use axum::{
     Router,
 };
 use dotenvy::dotenv;
+use notify::Watcher;
 use sqlx::postgres::PgPoolOptions;
-use std::env;
+use std::{env, path::Path};
 use tower::ServiceBuilder;
+use tower_livereload::LiveReloadLayer;
 use tower_http::trace::TraceLayer;
 use tracing::debug;
 
@@ -34,6 +36,12 @@ async fn main() -> anyhow::Result<()> {
         .route("/", get(handlers::home::get))
         .with_state(pool)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
+
+    let livereload = LiveReloadLayer::new();
+    let reloader = livereload.reloader();
+    let mut watcher = notify::recommended_watcher(move |_| reloader.reload())?;
+    watcher.watch(Path::new("target/debug/crawlnicle"), notify::RecursiveMode::Recursive)?;
+    let app = app.layer(livereload);
 
     let addr = (env::var("HOST")? + ":" + &env::var("PORT")?).parse()?;
     debug!("listening on {}", addr);
