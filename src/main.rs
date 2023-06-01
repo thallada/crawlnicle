@@ -25,12 +25,13 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&pool).await?;
 
     let app = Router::new()
-        .route("/v1/feeds", get(handlers::feeds::get))
-        .route("/v1/feed", post(handlers::feed::post))
-        .route("/v1/feed/:id", get(handlers::feed::get))
-        .route("/v1/entries", get(handlers::entries::get))
-        .route("/v1/entry", post(handlers::entry::post))
-        .route("/v1/entry/:id", get(handlers::entry::get))
+        .route("/api/v1/feeds", get(handlers::api::feeds::get))
+        .route("/api/v1/feed", post(handlers::api::feed::post))
+        .route("/api/v1/feed/:id", get(handlers::api::feed::get))
+        .route("/api/v1/entries", get(handlers::api::entries::get))
+        .route("/api/v1/entry", post(handlers::api::entry::post))
+        .route("/api/v1/entry/:id", get(handlers::api::entry::get))
+        .route("/", get(handlers::home::get))
         .with_state(pool)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
