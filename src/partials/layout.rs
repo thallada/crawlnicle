@@ -45,7 +45,7 @@ impl Layout {
                 }
                 body {
                     (header())
-                    turbo-frame id="main" {
+                    turbo-frame id="main" data-turbo-action="advance" {
                         (template)
                     }
                 }

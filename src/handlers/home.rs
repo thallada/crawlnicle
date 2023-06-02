@@ -13,7 +13,8 @@ pub async fn get(State(pool): State<PgPool>, layout: Layout) -> Result<Response>
         ul {
             @for entry in entries {
                 @let title = entry.title.unwrap_or_else(|| "Untitled".to_string());
-                li { (title) }
+                @let url = format!("/entry/{}", entry.id);
+                li { a href=(url) { (title) } }
             }
         }
     }))

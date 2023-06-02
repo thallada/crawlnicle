@@ -42,6 +42,7 @@ async fn main() -> Result<()> {
         .route("/api/v1/entry/:id", get(handlers::api::entry::get))
         .route("/", get(handlers::home::get))
         .route("/feeds", get(handlers::feeds::get))
+        .route("/entry/:id", get(handlers::entry::get))
         .with_state(AppState {
             pool,
             config,
