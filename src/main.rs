@@ -1,31 +1,37 @@
+use std::path::Path;
+
+use anyhow::Result;
 use axum::{
     routing::{get, post},
-    Router,
+    Router, Extension,
 };
 use dotenvy::dotenv;
 use notify::Watcher;
 use sqlx::postgres::PgPoolOptions;
-use std::{env, path::Path};
 use tower::ServiceBuilder;
 use tower_livereload::LiveReloadLayer;
 use tower_http::trace::TraceLayer;
 use tracing::debug;
 
+use lib::config;
 use lib::handlers;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     dotenv().ok();
+
+    let config = config::Config::new()?;
 
     tracing_subscriber::fmt::init();
 
     let pool = PgPoolOptions::new()
-        .max_connections(env::var("DATABASE_MAX_CONNECTIONS")?.parse()?)
-        .connect(&env::var("DATABASE_URL")?)
+        .max_connections(config.database_max_connections)
+        .connect(&config.database_url)
         .await?;
 
     sqlx::migrate!().run(&pool).await?;
 
+    let addr = format!("{}:{}", &config.host, &config.port).parse()?;
     let mut app = Router::new()
         .route("/api/v1/feeds", get(handlers::api::feeds::get))
         .route("/api/v1/feed", post(handlers::api::feed::post))
@@ -36,7 +42,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/", get(handlers::home::get))
         .route("/feeds", get(handlers::feeds::get))
         .with_state(pool)
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
+        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
+        .layer(Extension(config));
 
     #[cfg(debug_assertions)]
     {
@@ -47,7 +54,6 @@ async fn main() -> anyhow::Result<()> {
         app = app.layer(livereload);
     }
 
-    let addr = (env::var("HOST")? + ":" + &env::var("PORT")?).parse()?;
     debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
