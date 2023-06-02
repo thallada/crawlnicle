@@ -1,25 +1,33 @@
 use axum::{
-        async_trait,
-        extract::FromRequestParts,
-        http::request::Parts,
-        response::{Html, IntoResponse, Response},
+    async_trait,
+    extract::{FromRef, FromRequestParts, State},
+    http::request::Parts,
+    response::{Html, IntoResponse, Response},
 };
-use maud::{DOCTYPE, html, Markup};
+use maud::{html, Markup, DOCTYPE};
 
+use crate::config::Config;
 use crate::partials::header::header;
 
-pub struct Layout;
+pub struct Layout {
+    pub title: String,
+}
 
 #[async_trait]
 impl<S> FromRequestParts<S> for Layout
 where
     S: Send + Sync,
+    Config: FromRef<S>,
 {
-    type Rejection = std::convert::Infallible;
+    type Rejection = Response;
 
-    async fn from_request_parts(_parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        // extract whatever your layout needs
-        Ok(Self {})
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let State(config) = State::<Config>::from_request_parts(parts, state)
+            .await
+            .map_err(|err| err.into_response())?;
+        Ok(Self {
+            title: config.title,
+        })
     }
 }
 
@@ -40,7 +48,8 @@ impl Layout {
                     (template)
                 }
             }
-        }.into_string();
+        }
+        .into_string();
 
         Html(with_layout).into_response()
     }

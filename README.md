@@ -28,11 +28,12 @@ postgres=# ALTER DATABASE crawlnicle OWNER TO crawlnicle;
    directory with the contents:
 
 ```
+RUST_LOG=crawlnicle=debug,cli=debug,lib=debug,tower_http=debug,sqlx=debug
 HOST=127.0.0.1
 PORT=3000
 DATABASE_URL=postgresql://crawlnicle:<password>@localhost/crawlnicle
 DATABASE_MAX_CONNECTIONS=5
-RUST_LOG=crawlnicle=debug,cli=debug,lib=debug,tower_http=debug,sqlx=debug
+TITLE=crawlnicle
 ```
 
 4. Install

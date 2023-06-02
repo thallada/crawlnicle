@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 use axum::{
     routing::{get, post},
-    Router, Extension,
+    Router,
 };
 use dotenvy::dotenv;
 use notify::Watcher;
@@ -15,6 +15,7 @@ use tracing::debug;
 
 use lib::config;
 use lib::handlers;
+use lib::state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -41,9 +42,11 @@ async fn main() -> Result<()> {
         .route("/api/v1/entry/:id", get(handlers::api::entry::get))
         .route("/", get(handlers::home::get))
         .route("/feeds", get(handlers::feeds::get))
-        .with_state(pool)
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
-        .layer(Extension(config));
+        .with_state(AppState {
+            pool,
+            config,
+        })
+        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     #[cfg(debug_assertions)]
     {
