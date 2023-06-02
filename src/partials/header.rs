@@ -4,9 +4,9 @@ pub fn header() -> Markup {
     html! {
         header {
             nav {
-                h1 { a href="/" { "crawlnicle" } }
+                h1 { a href="/" data-turbo-frame="main" { "crawlnicle" } }
                 ul {
-                    li { a href="/feeds" { "feeds" } }
+                    li { a href="/feeds" data-turbo-frame="main" { "feeds" } }
                 }
             }
         }
