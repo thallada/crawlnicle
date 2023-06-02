@@ -4,15 +4,15 @@ use maud::html;
 use sqlx::PgPool;
 
 use crate::error::Result;
-use crate::models::entry::get_entries;
+use crate::models::feed::get_feeds;
 use crate::partials::layout::Layout;
 
 pub async fn get(State(pool): State<PgPool>, layout: Layout) -> Result<Response> {
-    let entries = get_entries(&pool).await?;
+    let feeds = get_feeds(&pool).await?;
     Ok(layout.render(html! {
         ul {
-            @for entry in entries {
-                @let title = entry.title.unwrap_or_else(|| "Untitled".to_string());
+            @for feed in feeds {
+                @let title = feed.title.unwrap_or_else(|| "Untitled Feed".to_string());
                 li { (title) }
             }
         }

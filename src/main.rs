@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
 
     sqlx::migrate!().run(&pool).await?;
 
-    let app = Router::new()
+    let mut app = Router::new()
         .route("/api/v1/feeds", get(handlers::api::feeds::get))
         .route("/api/v1/feed", post(handlers::api::feed::post))
         .route("/api/v1/feed/:id", get(handlers::api::feed::get))
@@ -34,14 +34,18 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/entry", post(handlers::api::entry::post))
         .route("/api/v1/entry/:id", get(handlers::api::entry::get))
         .route("/", get(handlers::home::get))
+        .route("/feeds", get(handlers::feeds::get))
         .with_state(pool)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
-    let livereload = LiveReloadLayer::new();
-    let reloader = livereload.reloader();
-    let mut watcher = notify::recommended_watcher(move |_| reloader.reload())?;
-    watcher.watch(Path::new("target/debug/crawlnicle"), notify::RecursiveMode::Recursive)?;
-    let app = app.layer(livereload);
+    #[cfg(debug_assertions)]
+    {
+        let livereload = LiveReloadLayer::new();
+        let reloader = livereload.reloader();
+        let mut watcher = notify::recommended_watcher(move |_| reloader.reload())?;
+        watcher.watch(Path::new("target/debug/crawlnicle"), notify::RecursiveMode::Recursive)?;
+        app = app.layer(livereload);
+    }
 
     let addr = (env::var("HOST")? + ":" + &env::var("PORT")?).parse()?;
     debug!("listening on {}", addr);
