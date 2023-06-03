@@ -7,6 +7,7 @@ pub struct Config {
     pub host: String,
     pub port: u16,
     pub title: String,
+    pub max_mem_log_size: usize,
 }
 
 impl Config {
@@ -16,6 +17,7 @@ impl Config {
         let host = std::env::var("HOST").context("HOST not set")?;
         let port = std::env::var("PORT").context("PORT not set")?.parse()?;
         let title = std::env::var("TITLE").context("TITLE not set")?;
+        let max_mem_log_size = std::env::var("MAX_MEM_LOG_SIZE").context("MAX_MEM_LOG_SIZE not set")?.parse()?;
 
         Ok(Config {
             database_url,
@@ -23,6 +25,7 @@ impl Config {
             host,
             port,
             title,
+            max_mem_log_size,
         })
     }
 }

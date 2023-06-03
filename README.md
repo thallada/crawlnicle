@@ -34,6 +34,7 @@ PORT=3000
 DATABASE_URL=postgresql://crawlnicle:<password>@localhost/crawlnicle
 DATABASE_MAX_CONNECTIONS=5
 TITLE=crawlnicle
+MAX_MEM_LOG_SIZE=1000000
 ```
 
 4. Install

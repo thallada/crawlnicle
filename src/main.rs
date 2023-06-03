@@ -9,21 +9,22 @@ use dotenvy::dotenv;
 use notify::Watcher;
 use sqlx::postgres::PgPoolOptions;
 use tower::ServiceBuilder;
-use tower_livereload::LiveReloadLayer;
 use tower_http::trace::TraceLayer;
+use tower_livereload::LiveReloadLayer;
 use tracing::debug;
 
-use lib::config;
+use lib::config::Config;
 use lib::handlers;
 use lib::state::AppState;
+use lib::log::init_tracing;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
 
-    let config = config::Config::new()?;
+    let config = Config::new()?;
 
-    tracing_subscriber::fmt::init();
+    let _guards = init_tracing(&config)?;
 
     let pool = PgPoolOptions::new()
         .max_connections(config.database_max_connections)
@@ -43,10 +44,8 @@ async fn main() -> Result<()> {
         .route("/", get(handlers::home::get))
         .route("/feeds", get(handlers::feeds::get))
         .route("/entry/:id", get(handlers::entry::get))
-        .with_state(AppState {
-            pool,
-            config,
-        })
+        .route("/log", get(handlers::log::get))
+        .with_state(AppState { pool, config })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     #[cfg(debug_assertions)]
@@ -54,7 +53,10 @@ async fn main() -> Result<()> {
         let livereload = LiveReloadLayer::new();
         let reloader = livereload.reloader();
         let mut watcher = notify::recommended_watcher(move |_| reloader.reload())?;
-        watcher.watch(Path::new("target/debug/crawlnicle"), notify::RecursiveMode::Recursive)?;
+        watcher.watch(
+            Path::new("target/debug/crawlnicle"),
+            notify::RecursiveMode::Recursive,
+        )?;
         app = app.layer(livereload);
     }
 
