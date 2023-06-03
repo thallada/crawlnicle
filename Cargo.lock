@@ -255,6 +255,7 @@ dependencies = [
  "anyhow",
  "argh",
  "axum",
+ "bytes",
  "chrono",
  "dotenvy",
  "feed-rs",
@@ -267,6 +268,7 @@ dependencies = [
  "sqlx",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tower",
  "tower-http",
  "tower-livereload",
@@ -2051,6 +2053,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

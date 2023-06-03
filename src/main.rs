@@ -5,9 +5,11 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use bytes::Bytes;
 use dotenvy::dotenv;
 use notify::Watcher;
 use sqlx::postgres::PgPoolOptions;
+use tokio::sync::watch::channel;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tower_livereload::LiveReloadLayer;
@@ -24,7 +26,8 @@ async fn main() -> Result<()> {
 
     let config = Config::new()?;
 
-    let _guards = init_tracing(&config)?;
+    let (log_sender, log_receiver) = channel::<Bytes>(Bytes::new());
+    let _guards = init_tracing(&config, log_sender)?;
 
     let pool = PgPoolOptions::new()
         .max_connections(config.database_max_connections)
@@ -45,7 +48,8 @@ async fn main() -> Result<()> {
         .route("/feeds", get(handlers::feeds::get))
         .route("/entry/:id", get(handlers::entry::get))
         .route("/log", get(handlers::log::get))
-        .with_state(AppState { pool, config })
+        .route("/log/stream", get(handlers::log::stream))
+        .with_state(AppState { pool, config, log_receiver })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     #[cfg(debug_assertions)]

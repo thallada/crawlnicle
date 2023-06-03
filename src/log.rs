@@ -2,7 +2,9 @@ use std::sync::Mutex;
 use std::{io::Write, collections::VecDeque};
 
 use anyhow::Result;
+use bytes::Bytes;
 use once_cell::sync::Lazy;
+use tokio::sync::watch::Sender;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt::format, EnvFilter};
@@ -25,13 +27,15 @@ pub static MEM_LOG: Lazy<Mutex<VecDeque<u8>>> = Lazy::new(|| Mutex::new(VecDeque
 /// to write will make the buffer exceed `max`.
 struct LimitedInMemoryBuffer {
     pub buf: &'static Mutex<VecDeque<u8>>,
+    sender: Sender<Bytes>,
     max: usize,
 }
 
 impl LimitedInMemoryBuffer {
-    fn new(buf: &'static Mutex<VecDeque<u8>>, max: usize) -> Self {
+    fn new(buf: &'static Mutex<VecDeque<u8>>, sender: Sender<Bytes>, max: usize) -> Self {
         Self {
             buf,
+            sender,
             max,
         }
     }
@@ -59,6 +63,8 @@ impl Write for LimitedInMemoryBuffer {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         // if self.buf is too big, truncate it to the closest newline starting from the front
         self.truncate();
+        let bytes = Bytes::copy_from_slice(buf);
+        self.sender.send(bytes).ok();
         let mut mem_buf = self.buf.lock().unwrap();
         mem_buf.write(buf)
     }
@@ -69,12 +75,12 @@ impl Write for LimitedInMemoryBuffer {
     }
 }
 
-pub fn init_tracing(config: &Config) -> Result<(WorkerGuard, WorkerGuard)> {
+pub fn init_tracing(config: &Config, log_sender: Sender<Bytes>) -> Result<(WorkerGuard, WorkerGuard)> {
     let fmt_layer = tracing_subscriber::fmt::layer();
     let filter_layer = EnvFilter::from_default_env();
     let file_appender = tracing_appender::rolling::hourly("./logs", "log");
     let (file_writer, file_writer_guard) = tracing_appender::non_blocking(file_appender);
-    let mem_writer = LimitedInMemoryBuffer::new(&MEM_LOG, config.max_mem_log_size);
+    let mem_writer = LimitedInMemoryBuffer::new(&MEM_LOG, log_sender, config.max_mem_log_size);
     let (mem_writer, mem_writer_guard) = tracing_appender::non_blocking(mem_writer);
     let file_writer_layer = tracing_subscriber::fmt::layer()
         .with_writer(file_writer)
