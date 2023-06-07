@@ -14,6 +14,7 @@ path = "src/lib.rs"
 ansi-to-html = "0.1"
 anyhow = "1"
 argh = "0.1"
+article_scraper = "2.0.0-alpha.0"
 axum = "0.6"
 bytes = "1.4"
 chrono = { version = "0.4", features = ["serde"] }

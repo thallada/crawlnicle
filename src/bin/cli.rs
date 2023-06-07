@@ -98,8 +98,6 @@ pub async fn main() -> Result<()> {
 
     let args: Args = argh::from_env();
 
-    info!("hello?");
-
     match args.commands {
         Commands::AddFeed(args) => {
             let feed = create_feed(
@@ -125,6 +123,7 @@ pub async fn main() -> Result<()> {
                     title: args.title,
                     url: args.url,
                     description: args.description,
+                    html_content: None,
                     feed_id: args.feed_id,
                 },
             )

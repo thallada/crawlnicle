@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS "entries" (
     "title" VARCHAR(255),
     "url" VARCHAR(2048) NOT NULL,
     "description" TEXT,
+    "html_content" TEXT,
     "feed_id" INTEGER REFERENCES "feeds"(id) NOT NULL,
     "created_at" timestamp(3) NOT NULL,
     "updated_at" timestamp(3) NOT NULL,

@@ -11,6 +11,7 @@ pub struct Entry {
     pub title: Option<String>,
     pub url: String,
     pub description: Option<String>,
+    pub html_content: Option<String>,
     pub feed_id: i32,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -25,6 +26,7 @@ pub struct CreateEntry {
     pub url: String,
     #[validate(length(max = 524288))]
     pub description: Option<String>,
+    pub html_content: Option<String>,
     #[validate(range(min = 1))]
     pub feed_id: i32,
 }
@@ -52,13 +54,14 @@ pub async fn create_entry(pool: &PgPool, payload: CreateEntry) -> Result<Entry> 
     sqlx::query_as!(
         Entry,
         "INSERT INTO entries (
-            title, url, description, feed_id, created_at, updated_at
+            title, url, description, html_content, feed_id, created_at, updated_at
         ) VALUES (
-            $1, $2, $3, $4, now(), now()
+            $1, $2, $3, $4, $5, now(), now()
         ) RETURNING *",
         payload.title,
         payload.url,
         payload.description,
+        payload.html_content,
         payload.feed_id,
     )
     .fetch_one(pool)
@@ -77,23 +80,26 @@ pub async fn create_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
     let mut titles = Vec::with_capacity(payload.len());
     let mut urls = Vec::with_capacity(payload.len());
     let mut descriptions: Vec<Option<String>> = Vec::with_capacity(payload.len());
+    let mut html_contents: Vec<Option<String>> = Vec::with_capacity(payload.len());
     let mut feed_ids = Vec::with_capacity(payload.len());
     payload.iter().map(|entry| {
         titles.push(entry.title.clone());
         urls.push(entry.url.clone());
         descriptions.push(entry.description.clone());
+        html_contents.push(entry.html_content.clone());
         feed_ids.push(entry.feed_id);
         entry.validate()
     }).collect::<Result<Vec<()>, ValidationErrors>>()?;
     sqlx::query_as!(
         Entry,
         "INSERT INTO entries (
-            title, url, description, feed_id, created_at, updated_at
-        ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::int[])
+            title, url, description, html_content, feed_id, created_at, updated_at
+        ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::int[])
         RETURNING *",
         titles.as_slice() as &[Option<String>],
         urls.as_slice(),
         descriptions.as_slice() as &[Option<String>],
+        html_contents.as_slice() as &[Option<String>],
         feed_ids.as_slice(),
     )
     .fetch_all(pool)
@@ -112,24 +118,27 @@ pub async fn upsert_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
     let mut titles = Vec::with_capacity(payload.len());
     let mut urls = Vec::with_capacity(payload.len());
     let mut descriptions: Vec<Option<String>> = Vec::with_capacity(payload.len());
+    let mut html_contents: Vec<Option<String>> = Vec::with_capacity(payload.len());
     let mut feed_ids = Vec::with_capacity(payload.len());
     payload.iter().map(|entry| {
         titles.push(entry.title.clone());
         urls.push(entry.url.clone());
         descriptions.push(entry.description.clone());
+        html_contents.push(entry.html_content.clone());
         feed_ids.push(entry.feed_id);
         entry.validate()
     }).collect::<Result<Vec<()>, ValidationErrors>>()?;
     sqlx::query_as!(
         Entry,
         "INSERT INTO entries (
-            title, url, description, feed_id, created_at, updated_at
-        ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::int[])
+            title, url, description, html_content, feed_id, created_at, updated_at
+        ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::int[])
         ON CONFLICT DO NOTHING
         RETURNING *",
         titles.as_slice() as &[Option<String>],
         urls.as_slice(),
         descriptions.as_slice() as &[Option<String>],
+        html_contents.as_slice() as &[Option<String>],
         feed_ids.as_slice(),
     )
     .fetch_all(pool)
