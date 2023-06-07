@@ -11,6 +11,7 @@ path = "src/lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ansi-to-html = "0.1"
 anyhow = "1"
 argh = "0.1"
 axum = "0.6"

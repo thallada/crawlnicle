@@ -38,13 +38,13 @@ impl Layout {
             html lang="en" {
                 head {
                     meta charset="utf-8";
-                    title { "crawlnicle" }
+                    title { (self.title) }
                     script type="module" {
                         r#"import * as Turbo from 'https://cdn.skypack.dev/@hotwired/turbo';"#
                     }
                 }
                 body {
-                    (header())
+                    (header(&self.title))
                     turbo-frame id="main" data-turbo-action="advance" {
                         (template)
                     }

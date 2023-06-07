@@ -17,8 +17,8 @@ use tracing::debug;
 
 use lib::config::Config;
 use lib::handlers;
-use lib::state::AppState;
 use lib::log::init_tracing;
+use lib::state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -49,7 +49,11 @@ async fn main() -> Result<()> {
         .route("/entry/:id", get(handlers::entry::get))
         .route("/log", get(handlers::log::get))
         .route("/log/stream", get(handlers::log::stream))
-        .with_state(AppState { pool, config, log_receiver })
+        .with_state(AppState {
+            pool,
+            config,
+            log_receiver,
+        })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     #[cfg(debug_assertions)]
