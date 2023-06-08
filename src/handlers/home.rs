@@ -4,11 +4,11 @@ use maud::html;
 use sqlx::PgPool;
 
 use crate::error::Result;
-use crate::models::entry::get_entries;
+use crate::models::entry::{get_entries, GetEntriesOptions};
 use crate::partials::layout::Layout;
 
 pub async fn get(State(pool): State<PgPool>, layout: Layout) -> Result<Response> {
-    let entries = get_entries(&pool).await?;
+    let entries = get_entries(&pool, GetEntriesOptions::default()).await?;
     Ok(layout.render(html! {
         ul {
             @for entry in entries {

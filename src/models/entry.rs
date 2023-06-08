@@ -5,6 +5,8 @@ use validator::{Validate, ValidationErrors};
 
 use crate::error::{Error, Result};
 
+const DEFAULT_ENTRIES_PAGE_SIZE: i64 = 50;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entry {
     pub id: i32,
@@ -13,6 +15,7 @@ pub struct Entry {
     pub description: Option<String>,
     pub html_content: Option<String>,
     pub feed_id: i32,
+    pub published_at: NaiveDateTime,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub deleted_at: Option<NaiveDateTime>,
@@ -29,6 +32,7 @@ pub struct CreateEntry {
     pub html_content: Option<String>,
     #[validate(range(min = 1))]
     pub feed_id: i32,
+    pub published_at: NaiveDateTime,
 }
 
 pub async fn get_entry(pool: &PgPool, id: i32) -> Result<Entry> {
@@ -43,10 +47,44 @@ pub async fn get_entry(pool: &PgPool, id: i32) -> Result<Entry> {
         })
 }
 
-pub async fn get_entries(pool: &PgPool) -> sqlx::Result<Vec<Entry>> {
-    sqlx::query_as!(Entry, "SELECT * FROM entries WHERE deleted_at IS NULL")
+#[derive(Default)]
+pub struct GetEntriesOptions {
+    pub published_before: Option<NaiveDateTime>,
+    pub limit: Option<i64>,
+}
+
+pub async fn get_entries(
+    pool: &PgPool,
+    options: GetEntriesOptions,
+) -> sqlx::Result<Vec<Entry>> {
+    if let Some(published_before) = options.published_before {
+        sqlx::query_as!(
+            Entry,
+            "SELECT * FROM entries
+                WHERE deleted_at IS NULL
+                AND published_at < $1
+                ORDER BY published_at DESC
+                LIMIT $2
+            ",
+            published_before,
+            options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+        )
         .fetch_all(pool)
         .await
+    } else {
+        sqlx::query_as!(
+            Entry,
+            "SELECT * FROM entries
+                WHERE deleted_at IS NULL
+                ORDER BY published_at DESC
+                LIMIT $1
+            ",
+            options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+        )
+        .fetch_all(pool)
+        .await
+
+    }
 }
 
 pub async fn create_entry(pool: &PgPool, payload: CreateEntry) -> Result<Entry> {
@@ -54,15 +92,16 @@ pub async fn create_entry(pool: &PgPool, payload: CreateEntry) -> Result<Entry> 
     sqlx::query_as!(
         Entry,
         "INSERT INTO entries (
-            title, url, description, html_content, feed_id, created_at, updated_at
+            title, url, description, html_content, feed_id, published_at, created_at, updated_at
         ) VALUES (
-            $1, $2, $3, $4, $5, now(), now()
+            $1, $2, $3, $4, $5, $6, now(), now()
         ) RETURNING *",
         payload.title,
         payload.url,
         payload.description,
         payload.html_content,
         payload.feed_id,
+        payload.published_at,
     )
     .fetch_one(pool)
     .await
@@ -82,25 +121,31 @@ pub async fn create_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
     let mut descriptions: Vec<Option<String>> = Vec::with_capacity(payload.len());
     let mut html_contents: Vec<Option<String>> = Vec::with_capacity(payload.len());
     let mut feed_ids = Vec::with_capacity(payload.len());
-    payload.iter().map(|entry| {
-        titles.push(entry.title.clone());
-        urls.push(entry.url.clone());
-        descriptions.push(entry.description.clone());
-        html_contents.push(entry.html_content.clone());
-        feed_ids.push(entry.feed_id);
-        entry.validate()
-    }).collect::<Result<Vec<()>, ValidationErrors>>()?;
+    let mut published_ats = Vec::with_capacity(payload.len());
+    payload
+        .iter()
+        .map(|entry| {
+            titles.push(entry.title.clone());
+            urls.push(entry.url.clone());
+            descriptions.push(entry.description.clone());
+            html_contents.push(entry.html_content.clone());
+            feed_ids.push(entry.feed_id);
+            published_ats.push(entry.published_at);
+            entry.validate()
+        })
+        .collect::<Result<Vec<()>, ValidationErrors>>()?;
     sqlx::query_as!(
         Entry,
         "INSERT INTO entries (
-            title, url, description, html_content, feed_id, created_at, updated_at
-        ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::int[])
+            title, url, description, html_content, feed_id, published_at, created_at, updated_at
+        ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::int[], $6::timestamp(3)[])
         RETURNING *",
         titles.as_slice() as &[Option<String>],
         urls.as_slice(),
         descriptions.as_slice() as &[Option<String>],
         html_contents.as_slice() as &[Option<String>],
         feed_ids.as_slice(),
+        published_ats.as_slice(),
     )
     .fetch_all(pool)
     .await
@@ -120,19 +165,24 @@ pub async fn upsert_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
     let mut descriptions: Vec<Option<String>> = Vec::with_capacity(payload.len());
     let mut html_contents: Vec<Option<String>> = Vec::with_capacity(payload.len());
     let mut feed_ids = Vec::with_capacity(payload.len());
-    payload.iter().map(|entry| {
-        titles.push(entry.title.clone());
-        urls.push(entry.url.clone());
-        descriptions.push(entry.description.clone());
-        html_contents.push(entry.html_content.clone());
-        feed_ids.push(entry.feed_id);
-        entry.validate()
-    }).collect::<Result<Vec<()>, ValidationErrors>>()?;
+    let mut published_ats = Vec::with_capacity(payload.len());
+    payload
+        .iter()
+        .map(|entry| {
+            titles.push(entry.title.clone());
+            urls.push(entry.url.clone());
+            descriptions.push(entry.description.clone());
+            html_contents.push(entry.html_content.clone());
+            feed_ids.push(entry.feed_id);
+            published_ats.push(entry.published_at);
+            entry.validate()
+        })
+        .collect::<Result<Vec<()>, ValidationErrors>>()?;
     sqlx::query_as!(
         Entry,
         "INSERT INTO entries (
-            title, url, description, html_content, feed_id, created_at, updated_at
-        ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::int[])
+            title, url, description, html_content, feed_id, published_at, created_at, updated_at
+        ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::int[], $6::timestamp(3)[])
         ON CONFLICT DO NOTHING
         RETURNING *",
         titles.as_slice() as &[Option<String>],
@@ -140,6 +190,7 @@ pub async fn upsert_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
         descriptions.as_slice() as &[Option<String>],
         html_contents.as_slice() as &[Option<String>],
         feed_ids.as_slice(),
+        published_ats.as_slice(),
     )
     .fetch_all(pool)
     .await

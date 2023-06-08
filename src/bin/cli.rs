@@ -1,5 +1,6 @@
 use anyhow::Result;
 use argh::FromArgs;
+use chrono::Utc;
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::env;
@@ -125,6 +126,7 @@ pub async fn main() -> Result<()> {
                     description: args.description,
                     html_content: None,
                     feed_id: args.feed_id,
+                    published_at: Utc::now().naive_utc(),
                 },
             )
             .await?;
