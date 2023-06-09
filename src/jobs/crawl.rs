@@ -15,7 +15,8 @@ pub async fn crawl(pool: &PgPool) -> anyhow::Result<()> {
     let client = Client::new();
     let feeds = get_feeds(pool).await?;
     for feed in feeds {
-        let _feed_span = info_span!("feed", id = feed.id, url = feed.url.as_str());
+        let feed_span = info_span!("feed", id = feed.id, url = feed.url.as_str());
+        let _feed_span_guard = feed_span.enter();
         info!("Fetching feed");
         // TODO: handle these results
         let bytes = client.get(feed.url).send().await?.bytes().await?;
@@ -23,7 +24,8 @@ pub async fn crawl(pool: &PgPool) -> anyhow::Result<()> {
         let parsed_feed = parser::parse(&bytes[..])?;
         let mut payload = Vec::with_capacity(parsed_feed.entries.len());
         for entry in parsed_feed.entries {
-            let _entry_span = info_span!("entry", id = entry.id, title = entry.title.clone().map(|t| t.content));
+            let entry_span = info_span!("entry", id = entry.id, title = entry.title.clone().map(|t| t.content));
+            let _entry_span_guard = entry_span.enter();
             if let Some(link) = entry.links.get(0) {
                 // if no scraped or feed date is available, fallback to the current time
                 let published_at = entry.published.unwrap_or_else(Utc::now).naive_utc();
@@ -51,7 +53,7 @@ pub async fn crawl(pool: &PgPool) -> anyhow::Result<()> {
             }
         }
         let entries = upsert_entries(pool, payload).await?;
-        info!("Created {} entries for feed {}", entries.len(), feed.id);
+        info!("Created {} entries", entries.len());
     }
     Ok(())
 }

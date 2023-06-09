@@ -1,0 +1,39 @@
+/* Header */
+
+header.header nav {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+}
+
+header.header nav h1 {
+  margin: 0;
+}
+
+header.header nav a {
+  text-decoration: none;
+}
+
+header.header nav ul {
+  display: flex;
+  flex-direction: row;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+header.header nav ul li {
+  margin-left: 16px;
+}
+
+/* Home */
+
+ul.entries {
+  list-style: none;
+  margin: 24px 8px;
+  padding: 0;
+}
+
+ul.entries li {
+  margin-bottom: 8px;
+}

@@ -42,6 +42,7 @@ impl Layout {
                     script type="module" {
                         r#"import * as Turbo from 'https://cdn.skypack.dev/@hotwired/turbo';"#
                     }
+                    link rel="stylesheet" href="/static/styles.css";
                 }
                 body {
                     (header(&self.title))

@@ -2,7 +2,7 @@ use maud::{html, Markup};
 
 pub fn header(title: &str) -> Markup {
     html! {
-        header {
+        header class="header" {
             nav {
                 h1 { a href="/" data-turbo-frame="main" { (title) } }
                 ul {

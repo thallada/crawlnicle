@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, net::SocketAddr};
 
 use anyhow::Result;
 use axum::{
@@ -11,7 +11,7 @@ use notify::Watcher;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::watch::channel;
 use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
+use tower_http::{trace::TraceLayer, services::ServeDir};
 use tower_livereload::LiveReloadLayer;
 use tracing::debug;
 
@@ -19,6 +19,14 @@ use lib::config::Config;
 use lib::handlers;
 use lib::log::init_tracing;
 use lib::state::AppState;
+
+async fn serve(app: Router, addr: SocketAddr) -> Result<()> {
+    debug!("listening on {}", addr);
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await?;
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -49,6 +57,7 @@ async fn main() -> Result<()> {
         .route("/entry/:id", get(handlers::entry::get))
         .route("/log", get(handlers::log::get))
         .route("/log/stream", get(handlers::log::stream))
+        .nest_service("/static", ServeDir::new("static"))
         .with_state(AppState {
             pool,
             config,
@@ -56,22 +65,20 @@ async fn main() -> Result<()> {
         })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
-    #[cfg(debug_assertions)]
-    {
+    if cfg!(debug_assertions) {
+        debug!("starting livereload");
         let livereload = LiveReloadLayer::new();
         let reloader = livereload.reloader();
         let mut watcher = notify::recommended_watcher(move |_| reloader.reload())?;
         watcher.watch(
-            Path::new("target/debug/crawlnicle"),
+            Path::new("static"),
             notify::RecursiveMode::Recursive,
         )?;
         app = app.layer(livereload);
+        serve(app, addr).await?;
+    } else {
+        serve(app, addr).await?;
     }
-
-    debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await?;
 
     Ok(())
 }
