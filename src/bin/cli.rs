@@ -1,5 +1,5 @@
 use anyhow::Result;
-use argh::FromArgs;
+use clap::{Args, Parser, Subcommand};
 use chrono::Utc;
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
@@ -12,81 +12,72 @@ use lib::models::feed::{create_feed, delete_feed, CreateFeed, FeedType};
 use lib::models::entry::{create_entry, delete_entry, CreateEntry};
 use lib::uuid::Base62Uuid;
 
-#[derive(FromArgs)]
 /// CLI for crawlnicle
-struct Args {
-    #[argh(subcommand)]
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+#[command(propagate_version = true)]
+struct Cli {
+    #[command(subcommand)]
     commands: Commands,
 }
 
-#[derive(FromArgs)]
-#[argh(subcommand)]
+#[derive(Subcommand)]
 enum Commands {
+    /// Fetches new entries from all feeds in the database
+    Crawl,
     AddFeed(AddFeed),
     DeleteFeed(DeleteFeed),
     AddEntry(AddEntry),
     DeleteEntry(DeleteEntry),
-    Crawl(Crawl),
 }
 
-#[derive(FromArgs)]
 /// Add a feed to the database
-#[argh(subcommand, name = "add-feed")]
+#[derive(Args)]
 struct AddFeed {
-    #[argh(option)]
     /// title of the feed (max 255 characters)
+    #[arg(short, long)]
     title: Option<String>,
-    #[argh(option)]
     /// URL of the feed (max 2048 characters)
+    #[arg(short, long)]
     url: String,
-    #[argh(option, long = "type")]
     /// type of the feed ('rss' or 'atom')
+    #[arg(short, long)]
     feed_type: FeedType,
-    #[argh(option)]
     /// description of the feed
+    #[arg(short, long)]
     description: Option<String>,
 }
 
-#[derive(FromArgs)]
+#[derive(Args)]
 /// Delete a feed from the database
-#[argh(subcommand, name = "delete-feed")]
 struct DeleteFeed {
-    #[argh(positional)]
     /// id of the feed to delete
     id: Uuid,
 }
 
-#[derive(FromArgs)]
+#[derive(Args)]
 /// Add an entry to the database
-#[argh(subcommand, name = "add-entry")]
 struct AddEntry {
-    #[argh(option)]
     /// title of the entry (max 255 characters)
+    #[arg(short, long)]
     title: Option<String>,
-    #[argh(option)]
     /// URL of the entry (max 2048 characters)
+    #[arg(short, long)]
     url: String,
-    #[argh(option)]
     /// description of the entry
+    #[arg(short, long)]
     description: Option<String>,
-    #[argh(option)]
     /// source feed for the entry
+    #[arg(short, long)]
     feed_id: Uuid,
 }
 
-#[derive(FromArgs)]
+#[derive(Args)]
 /// Delete an entry from the database
-#[argh(subcommand, name = "delete-entry")]
 struct DeleteEntry {
-    #[argh(positional)]
     /// id of the entry to delete
     id: Uuid,
 }
-
-#[derive(FromArgs)]
-/// Delete an entry from the database
-#[argh(subcommand, name = "crawl")]
-struct Crawl {}
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
@@ -99,9 +90,9 @@ pub async fn main() -> Result<()> {
         .connect(&env::var("DATABASE_URL")?)
         .await?;
 
-    let args: Args = argh::from_env();
+    let cli: Cli = Cli::parse();
 
-    match args.commands {
+    match cli.commands {
         Commands::AddFeed(args) => {
             let feed = create_feed(
                 &pool,
@@ -138,7 +129,7 @@ pub async fn main() -> Result<()> {
             delete_entry(&pool, args.id).await?;
             info!("Deleted entry with id {}", Base62Uuid::from(args.id));
         }
-        Commands::Crawl(_) => {
+        Commands::Crawl => {
             info!("Crawling...");
             crawl(&pool).await?;
         }

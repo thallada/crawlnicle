@@ -6,6 +6,7 @@ use axum::{
     Router,
 };
 use bytes::Bytes;
+use clap::Parser;
 use dotenvy::dotenv;
 use notify::Watcher;
 use sqlx::postgres::PgPoolOptions;
@@ -32,7 +33,7 @@ async fn serve(app: Router, addr: SocketAddr) -> Result<()> {
 async fn main() -> Result<()> {
     dotenv().ok();
 
-    let config = Config::new()?;
+    let config = Config::parse();
 
     let (log_sender, log_receiver) = channel::<Bytes>(Bytes::new());
     let _guards = init_tracing(&config, log_sender)?;

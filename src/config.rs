@@ -1,31 +1,17 @@
-use anyhow::{Context, Result};
+use clap::Parser;
 
-#[derive(Clone, Debug)]
+#[derive(Parser, Clone, Debug)]
 pub struct Config {
+    #[clap(long, env)]
     pub database_url: String,
+    #[clap(long, env)]
     pub database_max_connections: u32,
+    #[clap(long, env)]
     pub host: String,
+    #[clap(long, env)]
     pub port: u16,
+    #[clap(long, env)]
     pub title: String,
+    #[clap(long, env)]
     pub max_mem_log_size: usize,
-}
-
-impl Config {
-    pub fn new() -> Result<Config> {
-        let database_url = std::env::var("DATABASE_URL").context("DATABASE_URL not set")?;
-        let database_max_connections = std::env::var("DATABASE_MAX_CONNECTIONS").context("DATABASE_MAX_CONNECTIONS not set")?.parse()?;
-        let host = std::env::var("HOST").context("HOST not set")?;
-        let port = std::env::var("PORT").context("PORT not set")?.parse()?;
-        let title = std::env::var("TITLE").context("TITLE not set")?;
-        let max_mem_log_size = std::env::var("MAX_MEM_LOG_SIZE").context("MAX_MEM_LOG_SIZE not set")?.parse()?;
-
-        Ok(Config {
-            database_url,
-            database_max_connections,
-            host,
-            port,
-            title,
-            max_mem_log_size,
-        })
-    }
 }

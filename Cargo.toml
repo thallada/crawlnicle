@@ -3,6 +3,7 @@ name = "crawlnicle"
 version = "0.1.0"
 edition = "2021"
 default-run = "crawlnicle"
+authors = ["Tyler Hallada <tyler@hallada.net>"]
 
 [lib]
 name = "lib"
@@ -13,11 +14,11 @@ path = "src/lib.rs"
 [dependencies]
 ansi-to-html = "0.1"
 anyhow = "1"
-argh = "0.1"
 article_scraper = "2.0.0-alpha.0"
 axum = "0.6"
 bytes = "1.4"
 chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.3", features = ["derive", "env"] }
 dotenvy = "0.15"
 feed-rs = "1.3"
 maud = { version = "0.25", features = ["axum"] }

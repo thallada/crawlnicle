@@ -8,7 +8,7 @@ use validator::Validate;
 
 use crate::error::{Error, Result};
 
-#[derive(Debug, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone)]
 #[sqlx(type_name = "feed_type", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum FeedType {
