@@ -1,3 +1,5 @@
 /target
 /logs
 .env
+/static/js/**.js
+/static/js/js_bundles.txt

@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "@hotwired/stimulus": "^3.2.1"
+  },
+  "name": "crawlnicle-frontend",
+  "module": "hello_controller.ts",
+  "type": "module",
+  "devDependencies": {
+    "bun-types": "^0.6.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

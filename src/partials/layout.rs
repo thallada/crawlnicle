@@ -6,6 +6,7 @@ use axum::{
 };
 use maud::{html, Markup, DOCTYPE};
 
+use crate::JS_BUNDLES;
 use crate::config::Config;
 use crate::partials::header::header;
 
@@ -41,6 +42,9 @@ impl Layout {
                     title { (self.title) }
                     script type="module" {
                         r#"import * as Turbo from 'https://cdn.skypack.dev/@hotwired/turbo';"#
+                    }
+                    @for js_bundle in JS_BUNDLES.lines() {
+                        script type="module" src=(js_bundle) {}
                     }
                     link rel="stylesheet" href="/static/styles.css";
                 }

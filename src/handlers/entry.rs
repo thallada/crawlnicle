@@ -15,9 +15,18 @@ pub async fn get(
 ) -> Result<Response> {
     let entry = get_entry(&pool, id.as_uuid()).await?;
     Ok(layout.render(html! {
-        @let title = entry.title.unwrap_or_else(|| "Untitled".to_string());
-        h1 { a href=(entry.url) { (title) } }
-        @let content = entry.html_content.unwrap_or_else(|| "No content".to_string());
-        (PreEscaped(content))
+        article {
+            @let title = entry.title.unwrap_or_else(|| "Untitled".to_string());
+            h1 { a href=(entry.url) { (title) } }
+            @let published_at = entry.published_at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+            span class="published" {
+                strong { "Published: " }
+                time datetime=(published_at) data-controller="local-time" {
+                    (published_at)
+                }
+            }
+            @let content = entry.html_content.unwrap_or_else(|| "No content".to_string());
+            (PreEscaped(content))
+        }
     }))
 }
