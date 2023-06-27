@@ -6,9 +6,13 @@ use sqlx::PgPool;
 
 use crate::error::Error;
 use crate::models::entry::{create_entry, get_entry, CreateEntry, Entry};
+use crate::uuid::Base62Uuid;
 
-pub async fn get(State(pool): State<PgPool>, Path(id): Path<i32>) -> Result<Json<Entry>, Error> {
-    Ok(Json(get_entry(&pool, id).await?))
+pub async fn get(
+    State(pool): State<PgPool>,
+    Path(id): Path<Base62Uuid>,
+) -> Result<Json<Entry>, Error> {
+    Ok(Json(get_entry(&pool, id.as_uuid()).await?))
 }
 
 pub async fn post(

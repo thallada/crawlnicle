@@ -5,10 +5,12 @@ use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::env;
 use tracing::info;
+use uuid::Uuid;
 
 use lib::jobs::crawl::crawl;
 use lib::models::feed::{create_feed, delete_feed, CreateFeed, FeedType};
 use lib::models::entry::{create_entry, delete_entry, CreateEntry};
+use lib::uuid::Base62Uuid;
 
 #[derive(FromArgs)]
 /// CLI for crawlnicle
@@ -51,7 +53,7 @@ struct AddFeed {
 struct DeleteFeed {
     #[argh(positional)]
     /// id of the feed to delete
-    id: i32,
+    id: Uuid,
 }
 
 #[derive(FromArgs)]
@@ -69,7 +71,7 @@ struct AddEntry {
     description: Option<String>,
     #[argh(option)]
     /// source feed for the entry
-    feed_id: i32,
+    feed_id: Uuid,
 }
 
 #[derive(FromArgs)]
@@ -78,7 +80,7 @@ struct AddEntry {
 struct DeleteEntry {
     #[argh(positional)]
     /// id of the entry to delete
-    id: i32,
+    id: Uuid,
 }
 
 #[derive(FromArgs)]
@@ -111,11 +113,11 @@ pub async fn main() -> Result<()> {
                 },
             )
             .await?;
-            info!("Created feed with id {}", feed.id);
+            info!("Created feed with id {}", Base62Uuid::from(feed.feed_id));
         }
         Commands::DeleteFeed(args) => {
             delete_feed(&pool, args.id).await?;
-            info!("Deleted feed with id {}", args.id);
+            info!("Deleted feed with id {}", Base62Uuid::from(args.id));
         }
         Commands::AddEntry(args) => {
             let entry = create_entry(
@@ -126,15 +128,15 @@ pub async fn main() -> Result<()> {
                     description: args.description,
                     html_content: None,
                     feed_id: args.feed_id,
-                    published_at: Utc::now().naive_utc(),
+                    published_at: Utc::now(),
                 },
             )
             .await?;
-            info!("Created entry with id {}", entry.id);
+            info!("Created entry with id {}", Base62Uuid::from(entry.entry_id));
         }
         Commands::DeleteEntry(args) => {
             delete_entry(&pool, args.id).await?;
-            info!("Deleted entry with id {}", args.id);
+            info!("Deleted entry with id {}", Base62Uuid::from(args.id));
         }
         Commands::Crawl(_) => {
             info!("Crawling...");

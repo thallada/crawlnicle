@@ -1,6 +1,7 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
 
 use crate::error::{Error, Result};
@@ -9,16 +10,16 @@ const DEFAULT_ENTRIES_PAGE_SIZE: i64 = 50;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entry {
-    pub id: i32,
+    pub entry_id: Uuid,
     pub title: Option<String>,
     pub url: String,
     pub description: Option<String>,
     pub html_content: Option<String>,
-    pub feed_id: i32,
-    pub published_at: NaiveDateTime,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-    pub deleted_at: Option<NaiveDateTime>,
+    pub feed_id: Uuid,
+    pub published_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -30,18 +31,17 @@ pub struct CreateEntry {
     #[validate(length(max = 524288))]
     pub description: Option<String>,
     pub html_content: Option<String>,
-    #[validate(range(min = 1))]
-    pub feed_id: i32,
-    pub published_at: NaiveDateTime,
+    pub feed_id: Uuid,
+    pub published_at: DateTime<Utc>,
 }
 
-pub async fn get_entry(pool: &PgPool, id: i32) -> Result<Entry> {
-    sqlx::query_as!(Entry, "SELECT * FROM entries WHERE id = $1", id)
+pub async fn get_entry(pool: &PgPool, entry_id: Uuid) -> Result<Entry> {
+    sqlx::query_as!(Entry, "select * from entry where entry_id = $1", entry_id)
         .fetch_one(pool)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::RowNotFound = error {
-                return Error::NotFound("entry", id);
+                return Error::NotFound("entry", entry_id);
             }
             Error::Sqlx(error)
         })
@@ -49,7 +49,7 @@ pub async fn get_entry(pool: &PgPool, id: i32) -> Result<Entry> {
 
 #[derive(Default)]
 pub struct GetEntriesOptions {
-    pub published_before: Option<NaiveDateTime>,
+    pub published_before: Option<DateTime<Utc>>,
     pub limit: Option<i64>,
 }
 
@@ -60,11 +60,11 @@ pub async fn get_entries(
     if let Some(published_before) = options.published_before {
         sqlx::query_as!(
             Entry,
-            "SELECT * FROM entries
-                WHERE deleted_at IS NULL
-                AND published_at < $1
-                ORDER BY published_at DESC
-                LIMIT $2
+            "select * from entry
+                where deleted_at is null
+                and published_at < $1
+                order by published_at desc
+                limit $2
             ",
             published_before,
             options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
@@ -74,10 +74,10 @@ pub async fn get_entries(
     } else {
         sqlx::query_as!(
             Entry,
-            "SELECT * FROM entries
-                WHERE deleted_at IS NULL
-                ORDER BY published_at DESC
-                LIMIT $1
+            "select * from entry
+                where deleted_at is null
+                order by published_at desc
+                limit $1
             ",
             options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
         )
@@ -91,11 +91,11 @@ pub async fn create_entry(pool: &PgPool, payload: CreateEntry) -> Result<Entry> 
     payload.validate()?;
     sqlx::query_as!(
         Entry,
-        "INSERT INTO entries (
-            title, url, description, html_content, feed_id, published_at, created_at, updated_at
-        ) VALUES (
-            $1, $2, $3, $4, $5, $6, now(), now()
-        ) RETURNING *",
+        "insert into entry (
+            title, url, description, html_content, feed_id, published_at
+        ) values (
+            $1, $2, $3, $4, $5, $6
+        ) returning *",
         payload.title,
         payload.url,
         payload.description,
@@ -136,10 +136,10 @@ pub async fn create_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
         .collect::<Result<Vec<()>, ValidationErrors>>()?;
     sqlx::query_as!(
         Entry,
-        "INSERT INTO entries (
-            title, url, description, html_content, feed_id, published_at, created_at, updated_at
-        ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::int[], $6::timestamp(3)[])
-        RETURNING *",
+        "insert into entry (
+            title, url, description, html_content, feed_id, published_at
+        ) select * from unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::uuid[], $6::timestamptz[])
+        returning *",
         titles.as_slice() as &[Option<String>],
         urls.as_slice(),
         descriptions.as_slice() as &[Option<String>],
@@ -180,11 +180,11 @@ pub async fn upsert_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
         .collect::<Result<Vec<()>, ValidationErrors>>()?;
     sqlx::query_as!(
         Entry,
-        "INSERT INTO entries (
-            title, url, description, html_content, feed_id, published_at, created_at, updated_at
-        ) SELECT *, now(), now() FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::int[], $6::timestamp(3)[])
-        ON CONFLICT DO NOTHING
-        RETURNING *",
+        "insert into entry (
+            title, url, description, html_content, feed_id, published_at
+        ) select * from unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::uuid[], $6::timestamptz[])
+        on conflict do nothing
+        returning *",
         titles.as_slice() as &[Option<String>],
         urls.as_slice(),
         descriptions.as_slice() as &[Option<String>],
@@ -204,8 +204,8 @@ pub async fn upsert_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
     })
 }
 
-pub async fn delete_entry(pool: &PgPool, id: i32) -> Result<()> {
-    sqlx::query!("UPDATE entries SET deleted_at = now() WHERE id = $1", id)
+pub async fn delete_entry(pool: &PgPool, entry_id: Uuid) -> Result<()> {
+    sqlx::query!("update entry set deleted_at = now() where entry_id = $1", entry_id)
         .execute(pool)
         .await?;
     Ok(())

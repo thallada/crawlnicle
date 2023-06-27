@@ -1,8 +1,9 @@
 use std::str::FromStr;
 
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use uuid::Uuid;
 use validator::Validate;
 
 use crate::error::{Error, Result};
@@ -28,15 +29,15 @@ impl FromStr for FeedType {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Feed {
-    pub id: i32,
+    pub feed_id: Uuid,
     pub title: Option<String>,
     pub url: String,
     #[serde(rename = "type")]
     pub feed_type: FeedType,
     pub description: Option<String>,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-    pub deleted_at: Option<NaiveDateTime>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -51,12 +52,13 @@ pub struct CreateFeed {
     pub description: Option<String>,
 }
 
-pub async fn get_feed(pool: &PgPool, id: i32) -> Result<Feed> {
+pub async fn get_feed(pool: &PgPool, feed_id: Uuid) -> Result<Feed> {
     sqlx::query_as!(
         Feed,
         // Unable to SELECT * here due to https://github.com/launchbadge/sqlx/issues/1004
-        r#"SELECT
-            id,
+        // language=PostGreSQL
+        r#"select
+            feed_id,
             title,
             url,
             type as "feed_type: FeedType",
@@ -64,14 +66,14 @@ pub async fn get_feed(pool: &PgPool, id: i32) -> Result<Feed> {
             created_at,
             updated_at,
             deleted_at
-        FROM feeds WHERE id = $1"#,
-        id
+        from feed where feed_id = $1"#,
+        feed_id
     )
     .fetch_one(pool)
     .await
     .map_err(|error| {
         if let sqlx::error::Error::RowNotFound = error {
-            return Error::NotFound("feed", id);
+            return Error::NotFound("feed", feed_id);
         }
         Error::Sqlx(error)
     })
@@ -80,8 +82,8 @@ pub async fn get_feed(pool: &PgPool, id: i32) -> Result<Feed> {
 pub async fn get_feeds(pool: &PgPool) -> sqlx::Result<Vec<Feed>> {
     sqlx::query_as!(
         Feed,
-        r#"SELECT
-            id,
+        r#"select
+            feed_id,
             title,
             url,
             type as "feed_type: FeedType",
@@ -89,8 +91,8 @@ pub async fn get_feeds(pool: &PgPool) -> sqlx::Result<Vec<Feed>> {
             created_at,
             updated_at,
             deleted_at
-        FROM feeds
-        WHERE deleted_at IS NULL"#
+        from feed
+        where deleted_at is null"#
     )
     .fetch_all(pool)
     .await
@@ -100,12 +102,12 @@ pub async fn create_feed(pool: &PgPool, payload: CreateFeed) -> Result<Feed> {
     payload.validate()?;
     Ok(sqlx::query_as!(
         Feed,
-        r#"INSERT INTO feeds (
-            title, url, type, description, created_at, updated_at
-        ) VALUES (
-            $1, $2, $3, $4, now(), now()
-        ) RETURNING
-            id,
+        r#"insert into feed (
+            title, url, type, description
+        ) values (
+            $1, $2, $3, $4
+        ) returning
+            feed_id,
             title,
             url,
             type as "feed_type: FeedType",
@@ -123,8 +125,8 @@ pub async fn create_feed(pool: &PgPool, payload: CreateFeed) -> Result<Feed> {
     .await?)
 }
 
-pub async fn delete_feed(pool: &PgPool, id: i32) -> Result<()> {
-    sqlx::query!("UPDATE feeds SET deleted_at = now() WHERE id = $1", id)
+pub async fn delete_feed(pool: &PgPool, feed_id: Uuid) -> Result<()> {
+    sqlx::query!("update feed set deleted_at = now() where feed_id = $1", feed_id)
         .execute(pool)
         .await?;
     Ok(())

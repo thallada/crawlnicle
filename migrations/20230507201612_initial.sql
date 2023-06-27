@@ -1,29 +1,64 @@
-CREATE TYPE feed_type AS ENUM ('atom', 'rss');
+-- This extension gives us `uuid_generate_v1mc()` which generates UUIDs that cluster better than `gen_random_uuid()`
+-- while still being difficult to predict and enumerate.
+-- Also, while unlikely, `gen_random_uuid()` can in theory produce collisions which can trigger spurious errors on
+-- insertion, whereas it's much less likely with `uuid_generate_v1mc()`.
+create extension if not exists "uuid-ossp";
 
-CREATE TABLE IF NOT EXISTS "feeds" (
-    "id" SERIAL PRIMARY KEY NOT NULL,
-    "title" VARCHAR(255),
-    "url" VARCHAR(2048) NOT NULL,
-    "type" feed_type NOT NULL,
-    "description" TEXT,
-    "created_at" timestamp(3) NOT NULL,
-    "updated_at" timestamp(3) NOT NULL,
-    "deleted_at" timestamp(3)
-);
-CREATE INDEX "feeds_deleted_at" ON "feeds" ("deleted_at");
-CREATE UNIQUE INDEX "feeds_url" ON "feeds" ("url");
+-- Set up trigger to auto-set `updated_at` columns when rows are modified
+create or replace function set_updated_at()
+    returns trigger as
+$$
+begin
+    NEW.updated_at = now();
+    return NEW;
+end;
+$$ language plpgsql;
 
-CREATE TABLE IF NOT EXISTS "entries" (
-    "id" SERIAL PRIMARY KEY NOT NULL,
-    "title" VARCHAR(255),
-    "url" VARCHAR(2048) NOT NULL,
-    "description" TEXT,
-    "html_content" TEXT,
-    "feed_id" INTEGER REFERENCES "feeds"(id) NOT NULL,
-    "published_at" timestamp(3) NOT NULL,
-    "created_at" timestamp(3) NOT NULL,
-    "updated_at" timestamp(3) NOT NULL,
-    "deleted_at" timestamp(3)
+create or replace function trigger_updated_at(tablename regclass)
+        returns void as
+$$
+begin
+    execute format('CREATE TRIGGER set_updated_at
+        BEFORE UPDATE
+        ON %s
+        FOR EACH ROW
+        WHEN (OLD is distinct from NEW)
+    EXECUTE FUNCTION set_updated_at();', tablename);
+end;
+$$ language plpgsql;
+
+-- This is a text collation that sorts text case-insensitively, useful for `UNIQUE` indexes
+    -- over things like usernames and emails, ithout needing to remember to do case-conversion.
+    create collation case_insensitive (provider = icu, locale = 'und-u-ks-level2', deterministic = false);
+
+    create type feed_type as enum ('atom', 'rss');
+
+    create table if not exists "feed" (
+    feed_id uuid primary key default uuid_generate_v1mc(),
+    title text,
+    url varchar(2048) not null,
+    type feed_type not null,
+    description text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz,
+    deleted_at timestamptz
 );
-CREATE INDEX "entries_published_at_where_deleted_at_is_null" ON "entries" ("published_at" DESC) WHERE "deleted_at" IS NULL;
-CREATE UNIQUE INDEX "entries_url_and_feed_id" ON "entries" ("url", "feed_id");
+create index on "feed" (deleted_at);
+create unique index on "feed" (url);
+select trigger_updated_at('"feed"');
+
+create table if not exists "entry" (
+    entry_id uuid primary key default uuid_generate_v1mc(),
+    title text,
+    url varchar(2048) not null,
+    description text,
+    html_content text,
+    feed_id uuid not null references "feed" (feed_id) on delete cascade,
+    published_at timestamptz not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz,
+    deleted_at timestamptz
+);
+create index on "entry" (published_at desc) where deleted_at is null;
+create unique index on "entry" (url, feed_id);
+select trigger_updated_at('"entry"');

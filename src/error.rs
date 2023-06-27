@@ -3,6 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use tracing::error;
 use serde_with::DisplayFromStr;
+use uuid::Uuid;
 use validator::ValidationErrors;
 
 /// An API-friendly error type.
@@ -23,7 +24,7 @@ pub enum Error {
     InvalidEntity(#[from] ValidationErrors),
 
     #[error("{0}: {1} not found")]
-    NotFound(&'static str, i32),
+    NotFound(&'static str, Uuid),
 
     #[error("referenced {0} not found")]
     RelationNotFound(&'static str),
