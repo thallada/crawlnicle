@@ -4,6 +4,7 @@ use std::path::Path;
 
 fn main() {
     println!("cargo:rerun-if-changed=migrations");
+    println!("cargo:rerun-if-changed=.frontend-built");
 
     let root_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let root_dir = Path::new(&root_dir);
