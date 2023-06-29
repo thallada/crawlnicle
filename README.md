@@ -72,12 +72,15 @@ It also separately watches the files in `frontend/` which will trigger a
 transpilation with `bun` and then rebuild the server binary so that it includes
 the new JS bundle names.
 
-Alternatively, you can just run `cargo run`.
+Alternatively, you can just run `cargo run` after building the frontend
+JavaScript with `just build-dev-frontend`.
 
 ### Building for Production
 
 You can also build the binary in release mode for running in production with the
-`just build` command (or `cargo build --release`).
+`just build` command. This will first build the minified frontend JavaScript
+(`just build-frontend`) and then build the rust binary with `cargo build
+--release`.
 
 ## Using the CLI
 
