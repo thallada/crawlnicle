@@ -1,6 +1,6 @@
 /target
 /logs
 .env
-/static/js/**.js
-/static/js/js_bundles.txt
+/static/js/*
+/static/css/*
 .frontend-built

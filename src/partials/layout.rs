@@ -6,7 +6,7 @@ use axum::{
 };
 use maud::{html, Markup, DOCTYPE};
 
-use crate::JS_BUNDLES;
+use crate::{JS_BUNDLES, CSS_BUNDLES};
 use crate::config::Config;
 use crate::partials::header::header;
 
@@ -46,7 +46,9 @@ impl Layout {
                     @for js_bundle in JS_BUNDLES.lines() {
                         script type="module" src=(js_bundle) {}
                     }
-                    link rel="stylesheet" href="/static/styles.css";
+                    @for css_bundle in CSS_BUNDLES.lines() {
+                        link rel="stylesheet" href=(css_bundle) {}
+                    }
                 }
                 body {
                     (header(&self.title))

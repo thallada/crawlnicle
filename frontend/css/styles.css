@@ -70,3 +70,10 @@ article span.published {
   font-size: 16px;
   line-height: 1.2em;
 }
+
+article img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}

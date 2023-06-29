@@ -2,19 +2,21 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
-fn main() {
-    println!("cargo:rerun-if-changed=migrations");
-    println!("cargo:rerun-if-changed=.frontend-built");
-
+fn write_bundle_manifest(asset_type: &str) {
     let root_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let root_dir = Path::new(&root_dir);
-    let dir = root_dir.join("static/js");
+    let dir = root_dir.join(format!("static/{}", asset_type));
 
     let entries = fs::read_dir(&dir).unwrap();
 
-    let js_bundles: Vec<String> = entries
+    let bundles: Vec<String> = entries
         .filter_map(Result::ok)
-        .filter(|entry| entry.file_name().to_string_lossy().ends_with(".js"))
+        .filter(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .ends_with(&format!(".{}", asset_type))
+        })
         .map(|entry| {
             Path::new("/")
                 .join(entry.path().strip_prefix(root_dir).unwrap())
@@ -23,5 +25,13 @@ fn main() {
         })
         .collect();
 
-    fs::write(dir.join("js_bundles.txt"), js_bundles.join("\n")).unwrap();
+    fs::write(dir.join("manifest.txt"), bundles.join("\n")).unwrap();
+}
+
+fn main() {
+    println!("cargo:rerun-if-changed=migrations");
+    println!("cargo:rerun-if-changed=.frontend-built");
+
+    write_bundle_manifest("js");
+    write_bundle_manifest("css");
 }

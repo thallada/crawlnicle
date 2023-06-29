@@ -7,18 +7,22 @@ install-frontend:
   bun install --cwd frontend
 
 clean-frontend:
-  rm -rf ./static/js/*
+  rm -rf ./static/js/* ./static/css/*
 
 build-frontend: clean-frontend
-  bun build frontend/index.ts \
-    --outdir ./static/js \
-    --entry-naming [name]-[hash].[ext] \
+  bun build frontend/js/index.ts \
+    --outdir ./static \
+    --root ./frontend \
+    --entry-naming [dir]/[name]-[hash].[ext] \
+    --asset-naming [dir]/[name]-[hash].[ext] \
     --minify
 
 build-dev-frontend: clean-frontend
-  bun build frontend/index.ts \
-    --outdir ./static/js \
-    --entry-naming [name]-[hash].[ext]
+  bun build frontend/js/index.ts \
+    --outdir ./static \
+    --root ./frontend \
+    --entry-naming [dir]/[name]-[hash].[ext] \
+    --asset-naming [dir]/[name]-[hash].[ext]
   touch .frontend-built # triggers watch-backend since static/* is ignored
 
 watch-frontend: install-frontend

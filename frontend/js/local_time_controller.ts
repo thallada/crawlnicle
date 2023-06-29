@@ -12,7 +12,11 @@ export default class extends Controller {
 
   get localTimeString(): string {
     if (this.utcTime) {
-      return this.utcTime.toLocaleDateString();
+      return this.utcTime.toLocaleDateString(window.navigator.language, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
     }
     return "Unknown datetime"
   }

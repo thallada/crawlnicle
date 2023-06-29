@@ -9,4 +9,5 @@ pub mod state;
 pub mod utils;
 pub mod uuid;
 
-pub const JS_BUNDLES: &'static str = include_str!("../static/js/js_bundles.txt");
+pub const JS_BUNDLES: &str = include_str!("../static/js/manifest.txt");
+pub const CSS_BUNDLES: &str = include_str!("../static/css/manifest.txt");
