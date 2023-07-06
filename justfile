@@ -39,6 +39,7 @@ watch-backend:
     --ignore 'logs/*' \
     --ignore 'static/*' \
     --ignore 'frontend/*' \
+    --ignore 'content/*' \
     --no-vcs-ignores \
     -x run
 

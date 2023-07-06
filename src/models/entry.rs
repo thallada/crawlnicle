@@ -14,7 +14,6 @@ pub struct Entry {
     pub title: Option<String>,
     pub url: String,
     pub description: Option<String>,
-    pub html_content: Option<String>,
     pub feed_id: Uuid,
     pub published_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
@@ -30,7 +29,6 @@ pub struct CreateEntry {
     pub url: String,
     #[validate(length(max = 524288))]
     pub description: Option<String>,
-    pub html_content: Option<String>,
     pub feed_id: Uuid,
     pub published_at: DateTime<Utc>,
 }
@@ -92,14 +90,13 @@ pub async fn create_entry(pool: &PgPool, payload: CreateEntry) -> Result<Entry> 
     sqlx::query_as!(
         Entry,
         "insert into entry (
-            title, url, description, html_content, feed_id, published_at
+            title, url, description, feed_id, published_at
         ) values (
-            $1, $2, $3, $4, $5, $6
+            $1, $2, $3, $4, $5
         ) returning *",
         payload.title,
         payload.url,
         payload.description,
-        payload.html_content,
         payload.feed_id,
         payload.published_at,
     )
@@ -119,7 +116,6 @@ pub async fn create_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
     let mut titles = Vec::with_capacity(payload.len());
     let mut urls = Vec::with_capacity(payload.len());
     let mut descriptions: Vec<Option<String>> = Vec::with_capacity(payload.len());
-    let mut html_contents: Vec<Option<String>> = Vec::with_capacity(payload.len());
     let mut feed_ids = Vec::with_capacity(payload.len());
     let mut published_ats = Vec::with_capacity(payload.len());
     payload
@@ -128,7 +124,6 @@ pub async fn create_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
             titles.push(entry.title.clone());
             urls.push(entry.url.clone());
             descriptions.push(entry.description.clone());
-            html_contents.push(entry.html_content.clone());
             feed_ids.push(entry.feed_id);
             published_ats.push(entry.published_at);
             entry.validate()
@@ -137,13 +132,12 @@ pub async fn create_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
     sqlx::query_as!(
         Entry,
         "insert into entry (
-            title, url, description, html_content, feed_id, published_at
-        ) select * from unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::uuid[], $6::timestamptz[])
+            title, url, description, feed_id, published_at
+        ) select * from unnest($1::text[], $2::text[], $3::text[], $4::uuid[], $5::timestamptz[])
         returning *",
         titles.as_slice() as &[Option<String>],
         urls.as_slice(),
         descriptions.as_slice() as &[Option<String>],
-        html_contents.as_slice() as &[Option<String>],
         feed_ids.as_slice(),
         published_ats.as_slice(),
     )
@@ -163,7 +157,6 @@ pub async fn upsert_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
     let mut titles = Vec::with_capacity(payload.len());
     let mut urls = Vec::with_capacity(payload.len());
     let mut descriptions: Vec<Option<String>> = Vec::with_capacity(payload.len());
-    let mut html_contents: Vec<Option<String>> = Vec::with_capacity(payload.len());
     let mut feed_ids = Vec::with_capacity(payload.len());
     let mut published_ats = Vec::with_capacity(payload.len());
     payload
@@ -172,7 +165,6 @@ pub async fn upsert_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
             titles.push(entry.title.clone());
             urls.push(entry.url.clone());
             descriptions.push(entry.description.clone());
-            html_contents.push(entry.html_content.clone());
             feed_ids.push(entry.feed_id);
             published_ats.push(entry.published_at);
             entry.validate()
@@ -181,18 +173,48 @@ pub async fn upsert_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
     sqlx::query_as!(
         Entry,
         "insert into entry (
-            title, url, description, html_content, feed_id, published_at
-        ) select * from unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::uuid[], $6::timestamptz[])
+            title, url, description, feed_id, published_at
+        ) select * from unnest($1::text[], $2::text[], $3::text[], $4::uuid[], $5::timestamptz[])
         on conflict do nothing
         returning *",
         titles.as_slice() as &[Option<String>],
         urls.as_slice(),
         descriptions.as_slice() as &[Option<String>],
-        html_contents.as_slice() as &[Option<String>],
         feed_ids.as_slice(),
         published_ats.as_slice(),
     )
     .fetch_all(pool)
+    .await
+    .map_err(|error| {
+        if let sqlx::error::Error::Database(ref psql_error) = error {
+            if psql_error.code().as_deref() == Some("23503") {
+                return Error::RelationNotFound("feed");
+            }
+        }
+        Error::Sqlx(error)
+    })
+}
+
+pub async fn update_entry(pool: &PgPool, payload: Entry) -> Result<Entry> {
+    sqlx::query_as!(
+        Entry,
+        "update entry set
+            title = $2,
+            url = $3,
+            description = $4,
+            feed_id = $5,
+            published_at = $6
+        where entry_id = $1
+        returning *
+        ",
+        payload.entry_id,
+        payload.title,
+        payload.url,
+        payload.description,
+        payload.feed_id,
+        payload.published_at,
+    )
+    .fetch_one(pool)
     .await
     .map_err(|error| {
         if let sqlx::error::Error::Database(ref psql_error) = error {

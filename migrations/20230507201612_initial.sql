@@ -28,12 +28,12 @@ end;
 $$ language plpgsql;
 
 -- This is a text collation that sorts text case-insensitively, useful for `UNIQUE` indexes
-    -- over things like usernames and emails, ithout needing to remember to do case-conversion.
-    create collation case_insensitive (provider = icu, locale = 'und-u-ks-level2', deterministic = false);
+-- over things like usernames and emails, ithout needing to remember to do case-conversion.
+create collation case_insensitive (provider = icu, locale = 'und-u-ks-level2', deterministic = false);
 
-    create type feed_type as enum ('atom', 'rss');
+create type feed_type as enum ('atom', 'rss');
 
-    create table if not exists "feed" (
+create table if not exists "feed" (
     feed_id uuid primary key default uuid_generate_v1mc(),
     title text,
     url varchar(2048) not null,
@@ -52,7 +52,6 @@ create table if not exists "entry" (
     title text,
     url varchar(2048) not null,
     description text,
-    html_content text,
     feed_id uuid not null references "feed" (feed_id) on delete cascade,
     published_at timestamptz not null,
     created_at timestamptz not null default now(),

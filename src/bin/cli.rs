@@ -117,7 +117,6 @@ pub async fn main() -> Result<()> {
                     title: args.title,
                     url: args.url,
                     description: args.description,
-                    html_content: None,
                     feed_id: args.feed_id,
                     published_at: Utc::now(),
                 },

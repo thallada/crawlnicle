@@ -1,7 +1,5 @@
 use url::Url;
 
-const BASE62_CHARS: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-
 pub fn get_domain(url: &str) -> Option<String> {
     Url::parse(url)
         .ok()

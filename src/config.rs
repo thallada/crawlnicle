@@ -14,4 +14,6 @@ pub struct Config {
     pub title: String,
     #[clap(long, env)]
     pub max_mem_log_size: usize,
+    #[clap(long, env)]
+    pub content_dir: String,
 }

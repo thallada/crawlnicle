@@ -55,6 +55,7 @@ builds
    DATABASE_MAX_CONNECTIONS=5
    TITLE=crawlnicle
    MAX_MEM_LOG_SIZE=1000000
+   CONTENT_DIR=./content
    ```
 
 1. Run `just migrate` (or `sqlx migrate run`) which will run all the database
