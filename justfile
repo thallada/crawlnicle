@@ -26,6 +26,8 @@ build-dev-frontend: clean-frontend
     --root ./frontend \
     --entry-naming [dir]/[name]-[hash].[ext] \
     --asset-naming [dir]/[name]-[hash].[ext]
+  touch ./static/js/manifest.txt # create empty manifest needed so binary compiles
+  touch ./static/css/manifest.txt # create empty manifest needed so binary compiles
   # in development mode, frontend changes do not trigger a rebuild of the backend
 
 watch-frontend: install-frontend
