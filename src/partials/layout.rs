@@ -1,3 +1,8 @@
+use std::path::Path;
+use std::fs;
+#[cfg(not(debug_assertions))]
+use std::str::Lines;
+
 use axum::{
     async_trait,
     extract::{FromRef, FromRequestParts, State},
@@ -6,6 +11,7 @@ use axum::{
 };
 use maud::{html, Markup, DOCTYPE};
 
+#[cfg(not(debug_assertions))]
 use crate::{JS_BUNDLES, CSS_BUNDLES};
 use crate::config::Config;
 use crate::partials::header::header;
@@ -32,6 +38,54 @@ where
     }
 }
 
+// In development, the JS and CSS file names are retrieved at runtime during Layout::render so that 
+// the server binary does not need to be rebuilt when frontend files are changed.
+//
+// In release mode, this work is done ahead of time in build.rs and saved to static/js/manifest.txt 
+// and static/css/manifest.txt. The contents of those files are then compiled into the server 
+// binary so that rendering the Layout does not need to do any filesystem operations.
+fn get_bundles(asset_type: &str) -> Vec<String> {
+    let root_dir = Path::new("./");
+    let dir = root_dir.join(format!("static/{}", asset_type));
+
+    let entries = fs::read_dir(dir).unwrap();
+
+    entries
+        .filter_map(Result::ok)
+        .filter(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .ends_with(&format!(".{}", asset_type))
+        })
+        .map(|entry| {
+            Path::new("/")
+                .join(entry.path().strip_prefix(root_dir).unwrap())
+                .display()
+                .to_string()
+        }).collect()
+}
+
+#[cfg(debug_assertions)]
+fn js_bundles() -> Vec<String> {
+    get_bundles("js")
+}
+
+#[cfg(not(debug_assertions))]
+fn js_bundles() -> Lines<'static> {
+    JS_BUNDLES.lines()
+}
+
+#[cfg(debug_assertions)]
+fn css_bundles() -> Vec<String> {
+    get_bundles("css")
+}
+
+#[cfg(not(debug_assertions))]
+fn css_bundles() -> Lines<'static> {
+    CSS_BUNDLES.lines()
+}
+
 impl Layout {
     pub fn render(self, template: Markup) -> Response {
         let with_layout = html! {
@@ -43,10 +97,10 @@ impl Layout {
                     script type="module" {
                         r#"import * as Turbo from 'https://cdn.skypack.dev/@hotwired/turbo';"#
                     }
-                    @for js_bundle in JS_BUNDLES.lines() {
+                    @for js_bundle in js_bundles() {
                         script type="module" src=(js_bundle) {}
                     }
-                    @for css_bundle in CSS_BUNDLES.lines() {
+                    @for css_bundle in css_bundles() {
                         link rel="stylesheet" href=(css_bundle) {}
                     }
                 }

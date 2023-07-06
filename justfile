@@ -16,6 +16,9 @@ build-frontend: clean-frontend
     --entry-naming [dir]/[name]-[hash].[ext] \
     --asset-naming [dir]/[name]-[hash].[ext] \
     --minify
+  touch ./static/js/manifest.txt # create empty manifest to be overwritten by build.rs
+  touch ./static/css/manifest.txt # create empty manifest to be overwritten by build.rs
+  touch .frontend-built # trigger build.rs to run
 
 build-dev-frontend: clean-frontend
   bun build frontend/js/index.ts \
@@ -23,7 +26,7 @@ build-dev-frontend: clean-frontend
     --root ./frontend \
     --entry-naming [dir]/[name]-[hash].[ext] \
     --asset-naming [dir]/[name]-[hash].[ext]
-  touch .frontend-built # triggers watch-backend since static/* is ignored
+  # in development mode, frontend changes do not trigger a rebuild of the backend
 
 watch-frontend: install-frontend
   cargo watch -w frontend \
