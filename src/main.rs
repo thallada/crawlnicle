@@ -55,6 +55,7 @@ async fn main() -> Result<()> {
         .route("/api/v1/entry/:id", get(handlers::api::entry::get))
         .route("/", get(handlers::home::get))
         .route("/feeds", get(handlers::feeds::get))
+        .route("/feed/:id", get(handlers::feed::get))
         .route("/entry/:id", get(handlers::entry::get))
         .route("/log", get(handlers::log::get))
         .route("/log/stream", get(handlers::log::stream))

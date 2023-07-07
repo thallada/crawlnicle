@@ -85,6 +85,45 @@ pub async fn get_entries(
     }
 }
 
+pub async fn get_entries_for_feed(
+    pool: &PgPool,
+    feed_id: Uuid,
+    options: GetEntriesOptions,
+) -> sqlx::Result<Vec<Entry>> {
+    if let Some(published_before) = options.published_before {
+        sqlx::query_as!(
+            Entry,
+            "select * from entry
+                where deleted_at is null
+                and feed_id = $1
+                and published_at < $2
+                order by published_at desc
+                limit $3
+            ",
+            feed_id,
+            published_before,
+            options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+        )
+        .fetch_all(pool)
+        .await
+    } else {
+        sqlx::query_as!(
+            Entry,
+            "select * from entry
+                where deleted_at is null
+                and feed_id = $1
+                order by published_at desc
+                limit $2
+            ",
+            feed_id,
+            options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+        )
+        .fetch_all(pool)
+        .await
+
+    }
+}
+
 pub async fn create_entry(pool: &PgPool, payload: CreateEntry) -> Result<Entry> {
     payload.validate()?;
     sqlx::query_as!(
