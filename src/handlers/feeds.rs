@@ -28,7 +28,7 @@ pub async fn get(State(pool): State<PgPool>, layout: Layout) -> Result<Response>
                         label { "Description: " }
                         textarea id="description" name="description" placeholder="Feed description" {}
                     }
-                    input type="submit" value="Add Feed";
+                    button type="submit" { "Add Feed" }
                 }
             } 
         }

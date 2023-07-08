@@ -1,6 +1,6 @@
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
+use axum::response::{IntoResponse, Response, Redirect};
 use axum::Form;
 use feed_rs::parser;
 use maud::html;
@@ -11,7 +11,7 @@ use sqlx::PgPool;
 
 use crate::error::{Error, Result};
 use crate::models::entry::get_entries_for_feed;
-use crate::models::feed::{create_feed, get_feed, CreateFeed};
+use crate::models::feed::{create_feed, get_feed, CreateFeed, delete_feed};
 use crate::partials::{entry_list::entry_list, feed_link::feed_link, layout::Layout};
 use crate::uuid::Base62Uuid;
 use crate::turbo_stream::TurboStream;
@@ -23,8 +23,15 @@ pub async fn get(
 ) -> Result<Response> {
     let feed = get_feed(&pool, id.as_uuid()).await?;
     let entries = get_entries_for_feed(&pool, feed.feed_id, Default::default()).await?;
+    let delete_url = format!("/feed/{}/delete", id);
     Ok(layout.render(html! {
-        h2 { (feed.title.unwrap_or_else(|| "Untitled Feed".to_string())) }
+        header class="feed-header" {
+            h2 { (feed.title.unwrap_or_else(|| "Untitled Feed".to_string())) }
+            button class="edit-feed" { "✏️ Edit feed" }
+            form action=(delete_url) method="post" {
+                button type="submit" class="remove-feed" data-controller="remove-feed" { "❌ Remove feed" }
+            }
+        }
         @if let Some(description) = feed.description {
             p { (description) }
         }
@@ -127,4 +134,12 @@ pub async fn post(
         ),
     )
         .into_response())
+}
+
+pub async fn delete(
+    State(pool): State<PgPool>,
+    Path(id): Path<Base62Uuid>,
+) -> Result<Redirect> {
+    delete_feed(&pool, id.as_uuid()).await?;
+    Ok(Redirect::to("/feeds"))
 }
