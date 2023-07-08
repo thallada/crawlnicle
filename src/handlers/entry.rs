@@ -23,7 +23,7 @@ pub async fn get(
     Ok(layout.render(html! {
         article {
             @let title = entry.title.unwrap_or_else(|| "Untitled".to_string());
-            h1 { a href=(entry.url) { (title) } }
+            h2 { a href=(entry.url) { (title) } }
             @let published_at = entry.published_at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
             span class="published" {
                 strong { "Published: " }

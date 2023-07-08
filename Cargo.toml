@@ -15,7 +15,7 @@ path = "src/lib.rs"
 ansi-to-html = "0.1"
 anyhow = "1"
 article_scraper = "2.0.0-alpha.0"
-axum = "0.6"
+axum = { version = "0.6", features = ["form"] }
 bytes = "1.4"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.3", features = ["derive", "env"] }

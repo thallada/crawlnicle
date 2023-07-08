@@ -6,6 +6,7 @@ pub mod log;
 pub mod models;
 pub mod partials;
 pub mod state;
+pub mod turbo_stream;
 pub mod utils;
 pub mod uuid;
 

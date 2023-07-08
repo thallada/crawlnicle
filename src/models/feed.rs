@@ -27,6 +27,16 @@ impl FromStr for FeedType {
     }
 }
 
+impl From<feed_rs::model::FeedType> for FeedType {
+    fn from(value: feed_rs::model::FeedType) -> Self {
+        match value {
+            feed_rs::model::FeedType::Atom => FeedType::Atom,
+            // TODO: this isn't really accurate
+            _ => FeedType::Rss,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Feed {
     pub feed_id: Uuid,

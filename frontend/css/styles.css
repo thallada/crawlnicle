@@ -3,7 +3,7 @@
 html {
   font-size: 18px;
   line-height: 1.6em;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 /* Header */
@@ -47,6 +47,10 @@ ul.entries li {
   margin-bottom: 8px;
 }
 
+ul.entries li a {
+  text-decoration: none;
+}
+
 ul.entries li em.domain {
   margin-left: 8px;
   color: rgba(0, 0, 0, 0.75);
@@ -63,7 +67,7 @@ pre#log {
 
 article {
   max-width: 35em;
-  margin: 0 auto;
+  margin: 24px auto;
   font-size: 18px;
 }
 
@@ -77,4 +81,72 @@ article img {
   max-height: 100%;
   width: auto;
   height: auto;
+}
+
+/* Feeds */
+
+span.error {
+  color: crimson;
+}
+
+div.feeds {
+  display: grid;
+  grid-template-columns: minmax(auto, 1fr) minmax(200px, 500px);
+  grid-template-areas: 'feeds add-feed';
+  grid-gap: 24px;
+}
+
+@media (max-width: 768px) {
+  div.feeds {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'feeds' 'add-feed';
+  }
+}
+
+ul#feeds {
+  grid-area: 'feeds';
+  list-style: none;
+  padding: 0;
+  margin-left: 8px;
+}
+
+ul#feeds li {
+  margin-bottom: 8px;
+}
+
+ul#feeds li a {
+   text-decoration: none;
+}
+
+div.add-feed {
+  grid-area: 'add-feed';
+}
+
+form.add-feed-form .form-grid {
+  display: grid;
+  grid-template-columns: fit-content(100%) minmax(100px, 400px);
+  grid-gap: 16px;
+}
+
+form.add-feed-form .form-grid label {
+  font-size: 16px;
+  font-weight: bold;
+  grid-column: 1 / 2;
+}
+
+form.add-feed-form .form-grid input, form.add-feed-form .form-grid textarea {
+  font-size: 14px;
+  grid-column: 2 / 3;
+}
+
+form.add-feed-form .form-grid textarea {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  resize: vertical;
+}
+
+form.add-feed-form input[type="submit"] {
+  font-size: 14px;
+  margin-top: 24px;
+  padding: 4px 16px;
+  float: right;
 }

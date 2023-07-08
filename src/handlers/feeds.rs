@@ -5,18 +5,32 @@ use sqlx::PgPool;
 
 use crate::error::Result;
 use crate::models::feed::get_feeds;
-use crate::partials::layout::Layout;
-use crate::uuid::Base62Uuid;
+use crate::partials::{feed_link::feed_link, layout::Layout};
 
 pub async fn get(State(pool): State<PgPool>, layout: Layout) -> Result<Response> {
     let feeds = get_feeds(&pool).await?;
     Ok(layout.render(html! {
-        ul {
-            @for feed in feeds {
-                @let title = feed.title.unwrap_or_else(|| "Untitled Feed".to_string());
-                @let feed_url = format!("/feed/{}", Base62Uuid::from(feed.feed_id));
-                li { a href=(feed_url) { (title) } }
+        h2 { "Feeds" }
+        div class="feeds" {
+            ul id="feeds" {
+                @for feed in feeds {
+                    li { (feed_link(&feed)) }
+                }
             }
+            div class="add-feed" {
+                h3 { "Add Feed" }
+                form action="/feed" method="post" class="add-feed-form" {
+                    div class="form-grid" {
+                        label for="url" { "URL (required): " }
+                        input type="text" id="url" name="url" placeholder="https://example.com/feed.xml" required="true";
+                        label for="title" { "Title: " }
+                        input type="text" id="title" name="title" placeholder="Feed title";
+                        label { "Description: " }
+                        textarea id="description" name="description" placeholder="Feed description" {}
+                    }
+                    input type="submit" value="Add Feed";
+                }
+            } 
         }
     }))
 }

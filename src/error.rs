@@ -20,6 +20,9 @@ pub enum Error {
     #[error("an internal server error occurred")]
     Anyhow(#[from] anyhow::Error),
 
+    #[error("an internal server error occurred")]
+    Reqwest(#[from] reqwest::Error),
+
     #[error("validation error in request body")]
     InvalidEntity(#[from] ValidationErrors),
 
@@ -69,7 +72,7 @@ impl Error {
 
         match self {
             NotFound(_, _) => StatusCode::NOT_FOUND,
-            Sqlx(_) | Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Sqlx(_) | Anyhow(_) | Reqwest(_) => StatusCode::INTERNAL_SERVER_ERROR,
             InvalidEntity(_) | RelationNotFound(_) => StatusCode::UNPROCESSABLE_ENTITY,
         }
     }
