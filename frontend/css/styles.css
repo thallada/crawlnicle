@@ -147,7 +147,7 @@ form.add-feed-form .form-grid textarea {
 form.add-feed-form button {
   font-size: 14px;
   margin-top: 24px;
-  padding: 4px 16px;
+  padding: 4px 8px;
   float: right;
 }
 
@@ -161,6 +161,6 @@ header.feed-header {
 
 header.feed-header button {
   font-size: 14px;
-  padding: 4px 16px;
+  padding: 4px 8px;
   margin-left: 24px;
 }
