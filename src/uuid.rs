@@ -1,20 +1,34 @@
-use std::fmt::{Display, Formatter, self};
+use std::fmt::{self, Display, Formatter};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 const BASE62_CHARS: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
+/// A wrapper around a UUID (from `uuid::Uuid`) that serializes to a Base62 string.
+///
+/// Database rows have a UUID primary key, but they are encoded in Base62 to be shorter and more 
+/// URL-friendly for the frontend.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Base62Uuid(
     #[serde(deserialize_with = "uuid_from_base62_str")]
     #[serde(serialize_with = "uuid_to_base62_str")]
-    Uuid
+    Uuid,
 );
 
 impl Base62Uuid {
     pub fn as_uuid(&self) -> Uuid {
         self.0
+    }
+
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
+impl Default for Base62Uuid {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

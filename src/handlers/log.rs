@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use ansi_to_html::convert_escaped;
 use axum::extract::State;
+use axum::response::sse::KeepAlive;
 use axum::response::{
     sse::{Event, Sse},
     Response,
@@ -44,7 +45,7 @@ pub async fn stream(
         ))
     });
     Sse::new(log_stream).keep_alive(
-        axum::response::sse::KeepAlive::new()
+        KeepAlive::new()
             .interval(Duration::from_secs(15))
             .text("keep-alive-text"),
     )

@@ -1,8 +1,8 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
-use tracing::error;
 use serde_with::DisplayFromStr;
+use tracing::error;
 use uuid::Uuid;
 use validator::ValidationErrors;
 
@@ -31,6 +31,9 @@ pub enum Error {
 
     #[error("referenced {0} not found")]
     RelationNotFound(&'static str),
+
+    #[error("an internal server error occurred")]
+    InternalServerError,
 }
 
 pub type Result<T, E = Error> = ::std::result::Result<T, E>;
@@ -72,7 +75,9 @@ impl Error {
 
         match self {
             NotFound(_, _) => StatusCode::NOT_FOUND,
-            Sqlx(_) | Anyhow(_) | Reqwest(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            InternalServerError | Sqlx(_) | Anyhow(_) | Reqwest(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
             InvalidEntity(_) | RelationNotFound(_) => StatusCode::UNPROCESSABLE_ENTITY,
         }
     }

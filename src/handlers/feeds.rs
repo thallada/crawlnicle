@@ -14,7 +14,7 @@ pub async fn get(State(pool): State<PgPool>, layout: Layout) -> Result<Response>
         div class="feeds" {
             ul id="feeds" {
                 @for feed in feeds {
-                    li { (feed_link(&feed)) }
+                    li { (feed_link(&feed, false)) }
                 }
             }
             div class="add-feed" {

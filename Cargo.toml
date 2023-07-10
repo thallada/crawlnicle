@@ -41,7 +41,7 @@ tokio-stream = { version = "0.1", features = ["sync"] }
 tower = "0.4"
 tower-livereload = "0.8"
 tower-http = { version = "0.4", features = ["trace", "fs"] }
-tracing = { version = "0.1", features = ["valuable"] }
+tracing = { version = "0.1", features = ["valuable", "attributes"] }
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.3", features = ["serde"] }

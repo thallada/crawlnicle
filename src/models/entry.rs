@@ -8,7 +8,7 @@ use crate::error::{Error, Result};
 
 const DEFAULT_ENTRIES_PAGE_SIZE: i64 = 50;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entry {
     pub entry_id: Uuid,
     pub title: Option<String>,
@@ -51,10 +51,7 @@ pub struct GetEntriesOptions {
     pub limit: Option<i64>,
 }
 
-pub async fn get_entries(
-    pool: &PgPool,
-    options: GetEntriesOptions,
-) -> sqlx::Result<Vec<Entry>> {
+pub async fn get_entries(pool: &PgPool, options: GetEntriesOptions) -> sqlx::Result<Vec<Entry>> {
     if let Some(published_before) = options.published_before {
         sqlx::query_as!(
             Entry,
@@ -81,7 +78,6 @@ pub async fn get_entries(
         )
         .fetch_all(pool)
         .await
-
     }
 }
 
@@ -120,7 +116,6 @@ pub async fn get_entries_for_feed(
         )
         .fetch_all(pool)
         .await
-
     }
 }
 
@@ -266,8 +261,11 @@ pub async fn update_entry(pool: &PgPool, payload: Entry) -> Result<Entry> {
 }
 
 pub async fn delete_entry(pool: &PgPool, entry_id: Uuid) -> Result<()> {
-    sqlx::query!("update entry set deleted_at = now() where entry_id = $1", entry_id)
-        .execute(pool)
-        .await?;
+    sqlx::query!(
+        "update entry set deleted_at = now() where entry_id = $1",
+        entry_id
+    )
+    .execute(pool)
+    .await?;
     Ok(())
 }

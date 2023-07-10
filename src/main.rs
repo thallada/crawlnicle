@@ -1,4 +1,9 @@
-use std::{path::Path, net::SocketAddr};
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::Result;
 use axum::{
@@ -12,7 +17,7 @@ use notify::Watcher;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::watch::channel;
 use tower::ServiceBuilder;
-use tower_http::{trace::TraceLayer, services::ServeDir};
+use tower_http::{services::ServeDir, trace::TraceLayer};
 use tower_livereload::LiveReloadLayer;
 use tracing::debug;
 
@@ -38,6 +43,8 @@ async fn main() -> Result<()> {
     let (log_sender, log_receiver) = channel::<Bytes>(Bytes::new());
     let _guards = init_tracing(&config, log_sender)?;
 
+    let crawls = Arc::new(Mutex::new(HashMap::new()));
+
     let pool = PgPoolOptions::new()
         .max_connections(config.database_max_connections)
         .connect(&config.database_url)
@@ -57,6 +64,7 @@ async fn main() -> Result<()> {
         .route("/feeds", get(handlers::feeds::get))
         .route("/feed", post(handlers::feed::post))
         .route("/feed/:id", get(handlers::feed::get))
+        .route("/feed/:id/stream", get(handlers::feed::stream))
         .route("/feed/:id/delete", post(handlers::feed::delete))
         .route("/entry/:id", get(handlers::entry::get))
         .route("/log", get(handlers::log::get))
@@ -66,6 +74,7 @@ async fn main() -> Result<()> {
             pool,
             config,
             log_receiver,
+            crawls,
         })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
@@ -74,10 +83,7 @@ async fn main() -> Result<()> {
         let livereload = LiveReloadLayer::new();
         let reloader = livereload.reloader();
         let mut watcher = notify::recommended_watcher(move |_| reloader.reload())?;
-        watcher.watch(
-            Path::new("static"),
-            notify::RecursiveMode::Recursive,
-        )?;
+        watcher.watch(Path::new("static"), notify::RecursiveMode::Recursive)?;
         app = app.layer(livereload);
         serve(app, addr).await?;
     } else {

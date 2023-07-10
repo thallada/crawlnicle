@@ -37,7 +37,7 @@ impl From<feed_rs::model::FeedType> for FeedType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Feed {
     pub feed_id: Uuid,
     pub title: Option<String>,
@@ -135,9 +135,44 @@ pub async fn create_feed(pool: &PgPool, payload: CreateFeed) -> Result<Feed> {
     .await?)
 }
 
+pub async fn upsert_feed(pool: &PgPool, payload: CreateFeed) -> Result<Feed> {
+    payload.validate()?;
+    Ok(sqlx::query_as!(
+        Feed,
+        r#"insert into feed (
+            title, url, type, description
+        ) values (
+            $1, $2, $3, $4
+        ) on conflict (url) do update set
+            title = excluded.title,
+            url = excluded.url,
+            type = excluded.type,
+            description = excluded.description
+        returning
+            feed_id,
+            title,
+            url,
+            type as "feed_type: FeedType",
+            description,
+            created_at,
+            updated_at,
+            deleted_at
+        "#,
+        payload.title,
+        payload.url,
+        payload.feed_type as FeedType,
+        payload.description
+    )
+    .fetch_one(pool)
+    .await?)
+}
+
 pub async fn delete_feed(pool: &PgPool, feed_id: Uuid) -> Result<()> {
-    sqlx::query!("update feed set deleted_at = now() where feed_id = $1", feed_id)
-        .execute(pool)
-        .await?;
+    sqlx::query!(
+        "update feed set deleted_at = now() where feed_id = $1",
+        feed_id
+    )
+    .execute(pool)
+    .await?;
     Ok(())
 }
