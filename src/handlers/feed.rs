@@ -17,6 +17,7 @@ use tokio_stream::StreamExt;
 use url::Url;
 
 use crate::actors::feed_crawler::{FeedCrawlerHandle, FeedCrawlerHandleMessage};
+use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::models::entry::get_entries_for_feed;
 use crate::models::feed::{create_feed, delete_feed, get_feed, CreateFeed, FeedType};
@@ -108,11 +109,13 @@ impl IntoResponse for AddFeedError {
 pub async fn post(
     State(pool): State<PgPool>,
     State(crawls): State<Crawls>,
+    State(config): State<Config>,
     Form(add_feed): Form<AddFeed>,
 ) -> AddFeedResult<Response> {
     // TODO: store the client in axum state (as long as it can be used concurrently?)
     let client = Client::new();
-    let feed_crawler = FeedCrawlerHandle::new(pool.clone(), client.clone());
+    let feed_crawler =
+        FeedCrawlerHandle::new(pool.clone(), client.clone(), config.content_dir.clone());
 
     let feed = create_feed(
         &pool,

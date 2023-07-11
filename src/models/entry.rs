@@ -146,6 +146,37 @@ pub async fn create_entry(pool: &PgPool, payload: CreateEntry) -> Result<Entry> 
     })
 }
 
+pub async fn upsert_entry(pool: &PgPool, payload: CreateEntry) -> Result<Entry> {
+    payload.validate()?;
+    sqlx::query_as!(
+        Entry,
+        "insert into entry (
+            title, url, description, feed_id, published_at
+        ) values (
+            $1, $2, $3, $4, $5
+        ) on conflict (url, feed_id) do update set
+            title = excluded.title,
+            description = excluded.description,
+            published_at = excluded.published_at
+        returning *",
+        payload.title,
+        payload.url,
+        payload.description,
+        payload.feed_id,
+        payload.published_at,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|error| {
+        if let sqlx::error::Error::Database(ref psql_error) = error {
+            if psql_error.code().as_deref() == Some("23503") {
+                return Error::RelationNotFound("feed");
+            }
+        }
+        Error::Sqlx(error)
+    })
+}
+
 pub async fn create_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<Vec<Entry>> {
     let mut titles = Vec::with_capacity(payload.len());
     let mut urls = Vec::with_capacity(payload.len());
@@ -209,7 +240,10 @@ pub async fn upsert_entries(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<
         "insert into entry (
             title, url, description, feed_id, published_at
         ) select * from unnest($1::text[], $2::text[], $3::text[], $4::uuid[], $5::timestamptz[])
-        on conflict do nothing
+        on conflict (url, feed_id) do update set
+            title = excluded.title,
+            description = excluded.description,
+            published_at = excluded.published_at
         returning *",
         titles.as_slice() as &[Option<String>],
         urls.as_slice(),

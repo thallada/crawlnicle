@@ -1,18 +1,21 @@
 use std::fmt::{self, Display, Formatter};
 
+use chrono::Utc;
 use feed_rs::parser;
 use reqwest::Client;
 use sqlx::PgPool;
 use tokio::sync::{broadcast, mpsc};
-use tracing::{info, instrument};
+use tracing::log::warn;
+use tracing::{info, info_span, instrument};
 use url::Url;
 
-use crate::models::entry::Entry;
+use crate::actors::entry_crawler::EntryCrawlerHandle;
+use crate::models::entry::{upsert_entries, CreateEntry, Entry};
 use crate::models::feed::{upsert_feed, CreateFeed, Feed};
 
 /// The `FeedCrawler` actor fetches a feed url, parses it, and saves it to the database.
 ///
-/// It receives `FeedCrawlerMessage` messages via the `receiver` channel. It communicates back to 
+/// It receives `FeedCrawlerMessage` messages via the `receiver` channel. It communicates back to
 /// the sender of those messages via the `respond_to` channel on the `FeedCrawlerMessage`.
 ///
 /// `FeedCrawler` should not be instantiated directly. Instead, use the `FeedCrawlerHandle`.
@@ -20,6 +23,7 @@ struct FeedCrawler {
     receiver: mpsc::Receiver<FeedCrawlerMessage>,
     pool: PgPool,
     client: Client,
+    content_dir: String,
 }
 
 #[derive(Debug)]
@@ -38,7 +42,7 @@ impl Display for FeedCrawlerMessage {
     }
 }
 
-/// An error type that enumerates possible failures during a crawl and is cloneable and can be sent 
+/// An error type that enumerates possible failures during a crawl and is cloneable and can be sent
 /// across threads (does not reference the originating Errors which are usually not cloneable).
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum FeedCrawlerError {
@@ -48,15 +52,23 @@ pub enum FeedCrawlerError {
     ParseError(Url),
     #[error("failed to create feed: {0}")]
     CreateFeedError(Url),
+    #[error("failed to create feed entries: {0}")]
+    CreateFeedEntriesError(Url),
 }
 pub type FeedCrawlerResult<T, E = FeedCrawlerError> = ::std::result::Result<T, E>;
 
 impl FeedCrawler {
-    fn new(receiver: mpsc::Receiver<FeedCrawlerMessage>, pool: PgPool, client: Client) -> Self {
+    fn new(
+        receiver: mpsc::Receiver<FeedCrawlerMessage>,
+        pool: PgPool,
+        client: Client,
+        content_dir: String,
+    ) -> Self {
         FeedCrawler {
             receiver,
             pool,
             client,
+            content_dir,
         }
     }
 
@@ -87,6 +99,40 @@ impl FeedCrawler {
         .await
         .map_err(|_| FeedCrawlerError::CreateFeedError(url.clone()))?;
         info!(%feed.feed_id, "upserted feed");
+
+        let mut payload = Vec::with_capacity(parsed_feed.entries.len());
+        for entry in parsed_feed.entries {
+            let entry_span = info_span!("entry", id = entry.id);
+            let _entry_span_guard = entry_span.enter();
+            if let Some(link) = entry.links.get(0) {
+                // if no scraped or feed date is available, fallback to the current time
+                let published_at = entry.published.unwrap_or_else(Utc::now);
+                let entry = CreateEntry {
+                    title: entry.title.map(|t| t.content),
+                    url: link.href.clone(),
+                    description: entry.summary.map(|s| s.content),
+                    feed_id: feed.feed_id,
+                    published_at,
+                };
+                payload.push(entry);
+            } else {
+                warn!("Skipping feed entry with no links");
+            }
+        }
+        let entries = upsert_entries(&self.pool, payload)
+            .await
+            .map_err(|_| FeedCrawlerError::CreateFeedEntriesError(url.clone()))?;
+        info!("Created {} entries", entries.len());
+
+        for entry in entries {
+            let entry_crawler = EntryCrawlerHandle::new(
+                self.pool.clone(),
+                self.client.clone(),
+                self.content_dir.clone(),
+            );
+            // TODO: ignoring this receiver for the time being, pipe through events eventually
+            let _ = entry_crawler.crawl(entry).await;
+        }
         Ok(feed)
     }
 
@@ -124,7 +170,7 @@ pub struct FeedCrawlerHandle {
 /// `FeedCrawlerHandle`.
 ///
 /// `FeedCrawlerHandleMessage::Feed` contains the result of crawling a feed url.
-/// `FeedCrawlerHandleMessage::Entry` contains the result of crawling an entry url.
+/// `FeedCrawlerHandleMessage::Entry` contains the result of crawling an entry url within the feed.
 #[derive(Clone)]
 pub enum FeedCrawlerHandleMessage {
     Feed(FeedCrawlerResult<Feed>),
@@ -133,9 +179,9 @@ pub enum FeedCrawlerHandleMessage {
 
 impl FeedCrawlerHandle {
     /// Creates an async actor task that will listen for messages on the `sender` channel.
-    pub fn new(pool: PgPool, client: Client) -> Self {
+    pub fn new(pool: PgPool, client: Client, content_dir: String) -> Self {
         let (sender, receiver) = mpsc::channel(8);
-        let mut crawler = FeedCrawler::new(receiver, pool, client);
+        let mut crawler = FeedCrawler::new(receiver, pool, client, content_dir);
         tokio::spawn(async move { crawler.run().await });
 
         Self { sender }

@@ -94,6 +94,7 @@ impl Layout {
                 head {
                     meta charset="utf-8";
                     title { (self.title) }
+                    // TODO: vendor this before going to prod
                     script type="module" {
                         r#"import * as Turbo from 'https://cdn.skypack.dev/@hotwired/turbo';"#
                     }

@@ -13,6 +13,7 @@ use crate::models::feed::get_feeds;
 use crate::models::entry::{update_entry, upsert_entries, CreateEntry};
 use crate::uuid::Base62Uuid;
 
+/// DEPRECATED: Use FeedCrawler instead, keeping this for reference until I set up scheduled jobs.
 /// For every feed in the database, fetches the feed, parses it, and saves new entries to the
 /// database.
 pub async fn crawl(pool: &PgPool) -> anyhow::Result<()> {
