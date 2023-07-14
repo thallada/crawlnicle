@@ -10,6 +10,7 @@ use tracing::{info, info_span, instrument};
 use url::Url;
 
 use crate::actors::entry_crawler::EntryCrawlerHandle;
+use crate::domain_locks::DomainLocks;
 use crate::models::entry::{upsert_entries, CreateEntry, Entry};
 use crate::models::feed::{upsert_feed, CreateFeed, Feed};
 
@@ -23,6 +24,7 @@ struct FeedCrawler {
     receiver: mpsc::Receiver<FeedCrawlerMessage>,
     pool: PgPool,
     client: Client,
+    domain_locks: DomainLocks,
     content_dir: String,
 }
 
@@ -46,6 +48,8 @@ impl Display for FeedCrawlerMessage {
 /// across threads (does not reference the originating Errors which are usually not cloneable).
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum FeedCrawlerError {
+    #[error("invalid feed url: {0}")]
+    InvalidUrl(Url),
     #[error("failed to fetch feed: {0}")]
     FetchError(Url),
     #[error("failed to parse feed: {0}")]
@@ -62,27 +66,36 @@ impl FeedCrawler {
         receiver: mpsc::Receiver<FeedCrawlerMessage>,
         pool: PgPool,
         client: Client,
+        domain_locks: DomainLocks,
         content_dir: String,
     ) -> Self {
         FeedCrawler {
             receiver,
             pool,
             client,
+            domain_locks,
             content_dir,
         }
     }
 
     #[instrument(skip_all, fields(url = %url))]
     async fn crawl_feed(&self, url: Url) -> FeedCrawlerResult<Feed> {
+        let domain = url
+            .domain()
+            .ok_or(FeedCrawlerError::InvalidUrl(url.clone()))?;
         let bytes = self
-            .client
-            .get(url.clone())
-            .send()
-            .await
-            .map_err(|_| FeedCrawlerError::FetchError(url.clone()))?
-            .bytes()
-            .await
-            .map_err(|_| FeedCrawlerError::FetchError(url.clone()))?;
+            .domain_locks
+            .run_request(domain, async {
+                self.client
+                    .get(url.clone())
+                    .send()
+                    .await
+                    .map_err(|_| FeedCrawlerError::FetchError(url.clone()))?
+                    .bytes()
+                    .await
+                    .map_err(|_| FeedCrawlerError::FetchError(url.clone()))
+            })
+            .await?;
         info!("fetched feed");
         let parsed_feed =
             parser::parse(&bytes[..]).map_err(|_| FeedCrawlerError::ParseError(url.clone()))?;
@@ -128,6 +141,7 @@ impl FeedCrawler {
             let entry_crawler = EntryCrawlerHandle::new(
                 self.pool.clone(),
                 self.client.clone(),
+                self.domain_locks.clone(),
                 self.content_dir.clone(),
             );
             // TODO: ignoring this receiver for the time being, pipe through events eventually
@@ -179,9 +193,14 @@ pub enum FeedCrawlerHandleMessage {
 
 impl FeedCrawlerHandle {
     /// Creates an async actor task that will listen for messages on the `sender` channel.
-    pub fn new(pool: PgPool, client: Client, content_dir: String) -> Self {
+    pub fn new(
+        pool: PgPool,
+        client: Client,
+        domain_locks: DomainLocks,
+        content_dir: String,
+    ) -> Self {
         let (sender, receiver) = mpsc::channel(8);
-        let mut crawler = FeedCrawler::new(receiver, pool, client, content_dir);
+        let mut crawler = FeedCrawler::new(receiver, pool, client, domain_locks, content_dir);
         tokio::spawn(async move { crawler.run().await });
 
         Self { sender }

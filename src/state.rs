@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::actors::feed_crawler::FeedCrawlerHandleMessage;
 use crate::config::Config;
+use crate::domain_locks::DomainLocks;
 
 /// A map of feed IDs to a channel receiver for the active `FeedCrawler` running a crawl for that 
 /// feed.
@@ -29,6 +30,7 @@ pub struct AppState {
     pub config: Config,
     pub log_receiver: watch::Receiver<Bytes>,
     pub crawls: Crawls,
+    pub domain_locks: DomainLocks,
 }
 
 impl FromRef<AppState> for PgPool {
@@ -52,5 +54,11 @@ impl FromRef<AppState> for watch::Receiver<Bytes> {
 impl FromRef<AppState> for Crawls {
     fn from_ref(state: &AppState) -> Self {
         state.crawls.clone()
+    }
+}
+
+impl FromRef<AppState> for DomainLocks {
+    fn from_ref(state: &AppState) -> Self {
+        state.domain_locks.clone()
     }
 }

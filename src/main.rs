@@ -22,6 +22,7 @@ use tower_livereload::LiveReloadLayer;
 use tracing::debug;
 
 use lib::config::Config;
+use lib::domain_locks::DomainLocks;
 use lib::handlers;
 use lib::log::init_tracing;
 use lib::state::AppState;
@@ -44,6 +45,7 @@ async fn main() -> Result<()> {
     let _guards = init_tracing(&config, log_sender)?;
 
     let crawls = Arc::new(Mutex::new(HashMap::new()));
+    let domain_locks = DomainLocks::new();
 
     let pool = PgPoolOptions::new()
         .max_connections(config.database_max_connections)
@@ -75,6 +77,7 @@ async fn main() -> Result<()> {
             config,
             log_receiver,
             crawls,
+            domain_locks,
         })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 

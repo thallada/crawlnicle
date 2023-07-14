@@ -1,20 +1,17 @@
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::Path;
-use std::sync::Arc;
 
 use bytes::Buf;
-use feed_rs::parser;
 use readability::extractor;
 use reqwest::Client;
 use sqlx::PgPool;
-use tokio::sync::{broadcast, mpsc, Mutex};
+use tokio::sync::{broadcast, mpsc};
 use tracing::{info, instrument};
 use url::Url;
 
-use crate::config::Config;
-use crate::models::entry::{update_entry, CreateEntry, Entry};
-use crate::models::feed::{upsert_feed, CreateFeed, Feed};
+use crate::domain_locks::DomainLocks;
+use crate::models::entry::Entry;
 
 /// The `EntryCrawler` actor fetches an entry url, extracts the content, and saves the content to
 /// the file system and any associated metadata to the database.
@@ -27,6 +24,7 @@ struct EntryCrawler {
     receiver: mpsc::Receiver<EntryCrawlerMessage>,
     pool: PgPool,
     client: Client,
+    domain_locks: DomainLocks,
     content_dir: String,
 }
 
@@ -68,12 +66,14 @@ impl EntryCrawler {
         receiver: mpsc::Receiver<EntryCrawlerMessage>,
         pool: PgPool,
         client: Client,
+        domain_locks: DomainLocks,
         content_dir: String,
     ) -> Self {
         EntryCrawler {
             receiver,
             pool,
             client,
+            domain_locks,
             content_dir,
         }
     }
@@ -84,17 +84,26 @@ impl EntryCrawler {
         let content_dir = Path::new(&self.content_dir);
         let url =
             Url::parse(&entry.url).map_err(|_| EntryCrawlerError::InvalidUrl(entry.url.clone()))?;
+        let domain = url
+            .domain()
+            .ok_or(EntryCrawlerError::InvalidUrl(entry.url.clone()))?;
         let bytes = self
-            .client
-            .get(url.clone())
-            .send()
-            .await
-            .map_err(|_| EntryCrawlerError::FetchError(entry.url.clone()))?
-            .bytes()
-            .await
-            .map_err(|_| EntryCrawlerError::FetchError(entry.url.clone()))?;
+            .domain_locks
+            .run_request(domain, async {
+                self.client
+                    .get(url.clone())
+                    .send()
+                    .await
+                    .map_err(|_| EntryCrawlerError::FetchError(entry.url.clone()))?
+                    .bytes()
+                    .await
+                    .map_err(|_| EntryCrawlerError::FetchError(entry.url.clone()))
+            })
+            .await?;
+        info!("fetched entry");
         let article = extractor::extract(&mut bytes.reader(), &url)
             .map_err(|_| EntryCrawlerError::ExtractError(entry.url.clone()))?;
+        info!("extracted content");
         let id = entry.entry_id;
         // TODO: update entry with scraped data
         // if let Some(date) = article.date {
@@ -109,6 +118,7 @@ impl EntryCrawler {
             .map_err(|_| EntryCrawlerError::SaveContentError(entry.url.clone()))?;
         fs::write(content_dir.join(format!("{}.txt", id)), article.text)
             .map_err(|_| EntryCrawlerError::SaveContentError(entry.url.clone()))?;
+        info!("saved content to filesystem");
         Ok(entry)
     }
 
@@ -153,9 +163,14 @@ pub enum EntryCrawlerHandleMessage {
 
 impl EntryCrawlerHandle {
     /// Creates an async actor task that will listen for messages on the `sender` channel.
-    pub fn new(pool: PgPool, client: Client, content_dir: String) -> Self {
+    pub fn new(
+        pool: PgPool,
+        client: Client,
+        domain_locks: DomainLocks,
+        content_dir: String,
+    ) -> Self {
         let (sender, receiver) = mpsc::channel(8);
-        let mut crawler = EntryCrawler::new(receiver, pool, client, content_dir);
+        let mut crawler = EntryCrawler::new(receiver, pool, client, domain_locks, content_dir);
         tokio::spawn(async move { crawler.run().await });
 
         Self { sender }

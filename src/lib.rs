@@ -1,5 +1,6 @@
 pub mod actors;
 pub mod config;
+pub mod domain_locks;
 pub mod error;
 pub mod handlers;
 pub mod jobs;
