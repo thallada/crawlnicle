@@ -135,9 +135,12 @@ impl FeedCrawler {
         let entries = upsert_entries(&self.pool, payload)
             .await
             .map_err(|_| FeedCrawlerError::CreateFeedEntriesError(url.clone()))?;
-        info!("Created {} entries", entries.len());
+        let (new, updated) = entries
+            .into_iter()
+            .partition::<Vec<_>, _>(|entry| entry.updated_at.is_none());
+        info!(new = new.len(), updated = updated.len(), "saved entries");
 
-        for entry in entries {
+        for entry in new {
             let entry_crawler = EntryCrawlerHandle::new(
                 self.pool.clone(),
                 self.client.clone(),
