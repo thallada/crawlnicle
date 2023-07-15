@@ -1,19 +1,20 @@
+use std::cmp::Ordering;
 use std::fmt::{self, Display, Formatter};
 
-use chrono::Utc;
+use chrono::{Duration, Utc};
 use feed_rs::parser;
 use reqwest::Client;
 use sqlx::PgPool;
 use tokio::sync::{broadcast, mpsc};
 use tracing::log::warn;
-use tracing::{info, info_span, instrument};
+use tracing::{error, info, info_span, instrument};
 use url::Url;
 use uuid::Uuid;
 
 use crate::actors::entry_crawler::EntryCrawlerHandle;
 use crate::domain_locks::DomainLocks;
 use crate::models::entry::{CreateEntry, Entry};
-use crate::models::feed::Feed;
+use crate::models::feed::{Feed, MAX_CRAWL_INTERVAL_MINUTES, MIN_CRAWL_INTERVAL_MINUTES};
 use crate::uuid::Base62Uuid;
 
 /// The `FeedCrawler` actor fetches a feed url, parses it, and saves it to the database.
@@ -88,8 +89,8 @@ impl FeedCrawler {
             .await
             .map_err(|_| FeedCrawlerError::GetFeedError(Base62Uuid::from(feed_id)))?;
         info!("got feed from db");
-        let url = Url::parse(&feed.url)
-            .map_err(|_| FeedCrawlerError::InvalidUrl(feed.url.clone()))?;
+        let url =
+            Url::parse(&feed.url).map_err(|_| FeedCrawlerError::InvalidUrl(feed.url.clone()))?;
         let domain = url
             .domain()
             .ok_or(FeedCrawlerError::InvalidUrl(feed.url.clone()))?;
@@ -113,11 +114,31 @@ impl FeedCrawler {
         feed.url = url.to_string();
         feed.feed_type = parsed_feed.feed_type.into();
         feed.last_crawled_at = Some(Utc::now());
+        feed.last_crawl_error = None;
         if let Some(title) = parsed_feed.title {
             feed.title = Some(title.content);
         }
         if let Some(description) = parsed_feed.description {
             feed.description = Some(description.content);
+        }
+        let last_entry_published_at = parsed_feed.entries.iter().filter_map(|e| e.published).max();
+        if let Some(prev_last_entry_published_at) = feed.last_entry_published_at {
+            if let Some(published_at) = last_entry_published_at {
+                let time_since_last_entry = published_at - prev_last_entry_published_at;
+                match time_since_last_entry
+                    .cmp(&Duration::minutes(feed.crawl_interval_minutes.into()))
+                {
+                    Ordering::Greater => {
+                        feed.crawl_interval_minutes =
+                            i32::max(feed.crawl_interval_minutes * 2, MAX_CRAWL_INTERVAL_MINUTES);
+                    },
+                    Ordering::Less => {
+                        feed.crawl_interval_minutes =
+                            i32::max(feed.crawl_interval_minutes / 2, MIN_CRAWL_INTERVAL_MINUTES);
+                    },
+                    Ordering::Equal => {},
+                }
+            }
         }
         let feed = feed
             .save(&self.pool)
@@ -173,6 +194,13 @@ impl FeedCrawler {
                 respond_to,
             } => {
                 let result = self.crawl_feed(feed_id).await;
+                if let Err(error) = &result {
+                    match Feed::update_crawl_error(&self.pool, feed_id, format!("{}", error)).await {
+                        Ok(_) => info!("updated feed last_crawl_error"),
+                        Err(e) => error!("failed to update feed last_crawl_error: {}", e),
+                    }
+                }
+                
                 // ignore the result since the initiator may have cancelled waiting for the
                 // response, and that is ok
                 let _ = respond_to.send(FeedCrawlerHandleMessage::Feed(result));
@@ -227,10 +255,7 @@ impl FeedCrawlerHandle {
     /// Sends a `FeedCrawlerMessage::Crawl` message to the running `FeedCrawler` actor.
     ///
     /// Listen to the result of the crawl via the returned `broadcast::Receiver`.
-    pub async fn crawl(
-        &self,
-        feed_id: Uuid,
-    ) -> broadcast::Receiver<FeedCrawlerHandleMessage> {
+    pub async fn crawl(&self, feed_id: Uuid) -> broadcast::Receiver<FeedCrawlerHandleMessage> {
         let (sender, receiver) = broadcast::channel(8);
         let msg = FeedCrawlerMessage::Crawl {
             feed_id,

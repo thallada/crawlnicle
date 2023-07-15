@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, PgPool};
+use sqlx::{FromRow, PgPool, postgres::PgQueryResult};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -46,6 +46,9 @@ impl From<feed_rs::model::FeedType> for FeedType {
         }
     }
 }
+
+pub const MIN_CRAWL_INTERVAL_MINUTES: i32 = 1;
+pub const MAX_CRAWL_INTERVAL_MINUTES: i32 = 5040;
 
 #[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
 pub struct Feed {
@@ -274,6 +277,18 @@ impl Feed {
         .execute(pool)
         .await?;
         Ok(())
+    }
+
+    pub async fn update_crawl_error(pool: &PgPool, feed_id: Uuid, last_crawl_error: String) -> Result<PgQueryResult> {
+        Ok(sqlx::query!(
+            r#"update feed set
+                last_crawl_error = $2
+            where feed_id = $1"#,
+            feed_id,
+            last_crawl_error,
+        )
+        .execute(pool)
+        .await?)
     }
 
     pub async fn save(&self, pool: &PgPool) -> Result<Feed> {
