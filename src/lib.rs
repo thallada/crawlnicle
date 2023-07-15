@@ -3,7 +3,6 @@ pub mod config;
 pub mod domain_locks;
 pub mod error;
 pub mod handlers;
-pub mod jobs;
 pub mod log;
 pub mod models;
 pub mod partials;

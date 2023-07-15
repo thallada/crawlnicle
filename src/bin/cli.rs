@@ -1,15 +1,17 @@
 use anyhow::Result;
-use clap::{Args, Parser, Subcommand};
 use chrono::Utc;
+use clap::{Args, Parser, Subcommand};
 use dotenvy::dotenv;
+use lib::actors::feed_crawler::FeedCrawlerHandle;
+use lib::domain_locks::DomainLocks;
+use reqwest::Client;
 use sqlx::postgres::PgPoolOptions;
 use std::env;
 use tracing::info;
 use uuid::Uuid;
 
-use lib::jobs::crawl::crawl;
-use lib::models::feed::{create_feed, delete_feed, CreateFeed, FeedType};
-use lib::models::entry::{create_entry, delete_entry, CreateEntry};
+use lib::models::entry::{Entry, CreateEntry};
+use lib::models::feed::{CreateFeed, Feed, FeedType};
 use lib::uuid::Base62Uuid;
 
 /// CLI for crawlnicle
@@ -23,12 +25,18 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Fetches new entries from all feeds in the database
-    Crawl,
+    Crawl(CrawlFeed),
     AddFeed(AddFeed),
     DeleteFeed(DeleteFeed),
     AddEntry(AddEntry),
     DeleteEntry(DeleteEntry),
+}
+
+#[derive(Args)]
+/// Crawl a feed (get new entries)
+struct CrawlFeed {
+    /// id of the feed to crawl
+    id: Uuid,
 }
 
 /// Add a feed to the database
@@ -94,12 +102,11 @@ pub async fn main() -> Result<()> {
 
     match cli.commands {
         Commands::AddFeed(args) => {
-            let feed = create_feed(
+            let feed = Feed::create(
                 &pool,
                 CreateFeed {
                     title: args.title,
                     url: args.url,
-                    feed_type: args.feed_type,
                     description: args.description,
                 },
             )
@@ -107,11 +114,11 @@ pub async fn main() -> Result<()> {
             info!("Created feed with id {}", Base62Uuid::from(feed.feed_id));
         }
         Commands::DeleteFeed(args) => {
-            delete_feed(&pool, args.id).await?;
+            Feed::delete(&pool, args.id).await?;
             info!("Deleted feed with id {}", Base62Uuid::from(args.id));
         }
         Commands::AddEntry(args) => {
-            let entry = create_entry(
+            let entry = Entry::create(
                 &pool,
                 CreateEntry {
                     title: args.title,
@@ -125,12 +132,22 @@ pub async fn main() -> Result<()> {
             info!("Created entry with id {}", Base62Uuid::from(entry.entry_id));
         }
         Commands::DeleteEntry(args) => {
-            delete_entry(&pool, args.id).await?;
+            Entry::delete(&pool, args.id).await?;
             info!("Deleted entry with id {}", Base62Uuid::from(args.id));
         }
-        Commands::Crawl => {
-            info!("Crawling...");
-            crawl(&pool).await?;
+        Commands::Crawl(CrawlFeed { id }) => {
+            info!("Crawling feed {}...", Base62Uuid::from(id));
+            let client = Client::new();
+            // NOTE: this is not the same DomainLocks as the one used in the server so, if the 
+            // server is running, it will *not* serialize same-domain requests with it.
+            let domain_locks = DomainLocks::new();
+            let feed_crawler = FeedCrawlerHandle::new(
+                pool.clone(),
+                client.clone(),
+                domain_locks.clone(),
+                env::var("CONTENT_DIR")?,
+            );
+            let _ = feed_crawler.crawl(id).await;
         }
     }
 

@@ -4,11 +4,12 @@ use maud::html;
 use sqlx::PgPool;
 
 use crate::error::Result;
-use crate::models::feed::get_feeds;
+use crate::models::feed::Feed;
 use crate::partials::{feed_link::feed_link, layout::Layout};
 
 pub async fn get(State(pool): State<PgPool>, layout: Layout) -> Result<Response> {
-    let feeds = get_feeds(&pool).await?;
+    // TODO: pagination
+    let feeds = Feed::get_all(&pool).await?;
     Ok(layout.render(html! {
         h2 { "Feeds" }
         div class="feeds" {

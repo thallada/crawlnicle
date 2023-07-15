@@ -88,8 +88,3 @@ You can also build the binary in release mode for running in production with the
 This project also comes with a CLI binary which allows you to manipulate the
 database directly without needing to go through the REST API server. Run
 `cli --help` to see all of the available commands.
-
-## Running jobs
-
-To periodically fetch new items from all of the feeds execute the `cli crawl`
-command in a cronjob.

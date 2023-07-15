@@ -31,14 +31,18 @@ $$ language plpgsql;
 -- over things like usernames and emails, ithout needing to remember to do case-conversion.
 create collation case_insensitive (provider = icu, locale = 'und-u-ks-level2', deterministic = false);
 
-create type feed_type as enum ('atom', 'rss');
+create type feed_type as enum ('atom', 'json', 'rss0', 'rss1', 'rss2', 'unknown');
 
 create table if not exists "feed" (
     feed_id uuid primary key default uuid_generate_v1mc(),
     title text,
     url varchar(2048) not null,
-    type feed_type not null,
-    description text,
+    type feed_type not null default 'unknown',
+    description text default null,
+    crawl_interval_minutes int not null default 180,
+    last_crawl_error text default null,
+    last_crawled_at timestamptz default null,
+    last_entry_published_at timestamptz default null,
     created_at timestamptz not null default now(),
     updated_at timestamptz,
     deleted_at timestamptz

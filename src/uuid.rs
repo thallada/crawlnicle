@@ -9,7 +9,7 @@ const BASE62_CHARS: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmn
 ///
 /// Database rows have a UUID primary key, but they are encoded in Base62 to be shorter and more 
 /// URL-friendly for the frontend.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct Base62Uuid(
     #[serde(deserialize_with = "uuid_from_base62_str")]
     #[serde(serialize_with = "uuid_to_base62_str")]

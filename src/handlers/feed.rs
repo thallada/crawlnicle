@@ -20,8 +20,8 @@ use crate::actors::feed_crawler::{FeedCrawlerHandle, FeedCrawlerHandleMessage};
 use crate::config::Config;
 use crate::domain_locks::DomainLocks;
 use crate::error::{Error, Result};
-use crate::models::entry::get_entries_for_feed;
-use crate::models::feed::{create_feed, delete_feed, get_feed, CreateFeed, FeedType};
+use crate::models::entry::Entry;
+use crate::models::feed::{CreateFeed, Feed};
 use crate::partials::{entry_list::entry_list, feed_link::feed_link, layout::Layout};
 use crate::state::Crawls;
 use crate::turbo_stream::TurboStream;
@@ -32,8 +32,8 @@ pub async fn get(
     State(pool): State<PgPool>,
     layout: Layout,
 ) -> Result<Response> {
-    let feed = get_feed(&pool, id.as_uuid()).await?;
-    let entries = get_entries_for_feed(&pool, feed.feed_id, Default::default()).await?;
+    let feed = Feed::get(&pool, id.as_uuid()).await?;
+    let entries = Entry::get_all_for_feed(&pool, feed.feed_id, Default::default()).await?;
     let delete_url = format!("/feed/{}/delete", id);
     Ok(layout.render(html! {
         header class="feed-header" {
@@ -123,12 +123,11 @@ pub async fn post(
         config.content_dir.clone(),
     );
 
-    let feed = create_feed(
+    let feed = Feed::create(
         &pool,
         CreateFeed {
             title: add_feed.title,
             url: add_feed.url.clone(),
-            feed_type: FeedType::Rss, // eh, get rid of this
             description: add_feed.description,
         },
     )
@@ -148,7 +147,7 @@ pub async fn post(
 
     let url: Url = Url::parse(&add_feed.url)
         .map_err(|err| AddFeedError::InvalidUrl(add_feed.url.clone(), err))?;
-    let receiver = feed_crawler.crawl(url).await;
+    let receiver = feed_crawler.crawl(feed.feed_id).await;
     {
         let mut crawls = crawls.lock().map_err(|_| {
             AddFeedError::CreateFeedError(add_feed.url.clone(), Error::InternalServerError)
@@ -245,6 +244,6 @@ pub async fn stream(
 }
 
 pub async fn delete(State(pool): State<PgPool>, Path(id): Path<Base62Uuid>) -> Result<Redirect> {
-    delete_feed(&pool, id.as_uuid()).await?;
+    Feed::delete(&pool, id.as_uuid()).await?;
     Ok(Redirect::to("/feeds"))
 }

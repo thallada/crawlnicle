@@ -7,7 +7,7 @@ use sqlx::PgPool;
 
 use crate::config::Config;
 use crate::error::Result;
-use crate::models::entry::get_entry;
+use crate::models::entry::Entry;
 use crate::partials::layout::Layout;
 use crate::uuid::Base62Uuid;
 
@@ -17,7 +17,7 @@ pub async fn get(
     State(config): State<Config>,
     layout: Layout,
 ) -> Result<Response> {
-    let entry = get_entry(&pool, id.as_uuid()).await?;
+    let entry = Entry::get(&pool, id.as_uuid()).await?;
     let content_dir = std::path::Path::new(&config.content_dir);
     let content_path = content_dir.join(format!("{}.html", entry.entry_id));
     Ok(layout.render(html! {
