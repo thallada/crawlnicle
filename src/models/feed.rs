@@ -8,6 +8,8 @@ use validator::Validate;
 
 use crate::error::{Error, Result};
 
+pub const DEFAULT_FEEDS_PAGE_SIZE: i64 = 50;
+
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy)]
 #[sqlx(type_name = "feed_type", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
@@ -105,6 +107,22 @@ pub struct UpdateFeed {
     pub last_entry_published_at: Option<Option<DateTime<Utc>>>,
 }
 
+#[derive(Debug, Clone)]
+pub enum GetFeedsSort {
+    Title,
+    CreatedAt,
+    LastCrawledAt,
+    LastEntryPublishedAt,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct GetFeedsOptions {
+    pub sort: Option<GetFeedsSort>,
+    pub before: Option<DateTime<Utc>>,
+    pub after_title: Option<String>,
+    pub limit: Option<i64>,
+}
+
 impl Feed {
     pub async fn get(pool: &PgPool, feed_id: Uuid) -> Result<Feed> {
         sqlx::query_as!(
@@ -137,27 +155,234 @@ impl Feed {
         })
     }
 
-    pub async fn get_all(pool: &PgPool) -> sqlx::Result<Vec<Feed>> {
-        sqlx::query_as!(
-            Feed,
-            r#"select
-                feed_id,
-                title,
-                url,
-                type as "feed_type: FeedType",
-                description,
-                crawl_interval_minutes,
-                last_crawl_error,
-                last_crawled_at,
-                last_entry_published_at,
-                created_at,
-                updated_at,
-                deleted_at
-            from feed
-            where deleted_at is null"#
-        )
-        .fetch_all(pool)
-        .await
+    pub async fn get_all(pool: &PgPool, options: GetFeedsOptions) -> sqlx::Result<Vec<Feed>> {
+        // TODO: make sure there are indices for all of these sort options
+        match options.sort.unwrap_or(GetFeedsSort::CreatedAt) {
+            GetFeedsSort::Title => {
+                if let Some(after_title) = options.after_title {
+                    sqlx::query_as!(
+                        Feed,
+                        r#"select
+                            feed_id,
+                            title,
+                            url,
+                            type as "feed_type: FeedType",
+                            description,
+                            crawl_interval_minutes,
+                            last_crawl_error,
+                            last_crawled_at,
+                            last_entry_published_at,
+                            created_at,
+                            updated_at,
+                            deleted_at
+                        from feed
+                        where deleted_at is null
+                        and title > $1
+                        order by title asc
+                        limit $2
+                        "#,
+                        after_title,
+                        options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
+                    )
+                    .fetch_all(pool)
+                    .await
+                } else {
+                    sqlx::query_as!(
+                        Feed,
+                        r#"select
+                            feed_id,
+                            title,
+                            url,
+                            type as "feed_type: FeedType",
+                            description,
+                            crawl_interval_minutes,
+                            last_crawl_error,
+                            last_crawled_at,
+                            last_entry_published_at,
+                            created_at,
+                            updated_at,
+                            deleted_at
+                        from feed
+                        where deleted_at is null
+                        order by title asc
+                        limit $1
+                        "#,
+                        options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
+                    )
+                    .fetch_all(pool)
+                    .await
+
+                }
+            }
+            GetFeedsSort::CreatedAt => {
+                if let Some(created_before) = options.before {
+                    sqlx::query_as!(
+                        Feed,
+                        r#"select
+                            feed_id,
+                            title,
+                            url,
+                            type as "feed_type: FeedType",
+                            description,
+                            crawl_interval_minutes,
+                            last_crawl_error,
+                            last_crawled_at,
+                            last_entry_published_at,
+                            created_at,
+                            updated_at,
+                            deleted_at
+                        from feed
+                        where deleted_at is null
+                        and created_at < $1
+                        order by created_at desc
+                        limit $2
+                        "#,
+                        created_before,
+                        options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
+                    )
+                    .fetch_all(pool)
+                    .await
+                } else {
+                    sqlx::query_as!(
+                        Feed,
+                        r#"select
+                            feed_id,
+                            title,
+                            url,
+                            type as "feed_type: FeedType",
+                            description,
+                            crawl_interval_minutes,
+                            last_crawl_error,
+                            last_crawled_at,
+                            last_entry_published_at,
+                            created_at,
+                            updated_at,
+                            deleted_at
+                        from feed
+                        where deleted_at is null
+                        order by created_at desc
+                        limit $1
+                        "#,
+                        options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
+                    )
+                    .fetch_all(pool)
+                    .await
+
+                }
+            }
+            GetFeedsSort::LastCrawledAt => {
+                if let Some(crawled_before) = options.before {
+                    sqlx::query_as!(
+                        Feed,
+                        r#"select
+                            feed_id,
+                            title,
+                            url,
+                            type as "feed_type: FeedType",
+                            description,
+                            crawl_interval_minutes,
+                            last_crawl_error,
+                            last_crawled_at,
+                            last_entry_published_at,
+                            created_at,
+                            updated_at,
+                            deleted_at
+                        from feed
+                        where deleted_at is null
+                        and last_crawled_at < $1
+                        order by last_crawled_at desc
+                        limit $2
+                        "#,
+                        crawled_before,
+                        options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
+                    )
+                    .fetch_all(pool)
+                    .await
+                } else {
+                    sqlx::query_as!(
+                        Feed,
+                        r#"select
+                            feed_id,
+                            title,
+                            url,
+                            type as "feed_type: FeedType",
+                            description,
+                            crawl_interval_minutes,
+                            last_crawl_error,
+                            last_crawled_at,
+                            last_entry_published_at,
+                            created_at,
+                            updated_at,
+                            deleted_at
+                        from feed
+                        where deleted_at is null
+                        order by last_crawled_at desc
+                        limit $1
+                        "#,
+                        options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
+                    )
+                    .fetch_all(pool)
+                    .await
+
+                }
+            }
+            GetFeedsSort::LastEntryPublishedAt => {
+                if let Some(published_before) = options.before {
+                    sqlx::query_as!(
+                        Feed,
+                        r#"select
+                            feed_id,
+                            title,
+                            url,
+                            type as "feed_type: FeedType",
+                            description,
+                            crawl_interval_minutes,
+                            last_crawl_error,
+                            last_crawled_at,
+                            last_entry_published_at,
+                            created_at,
+                            updated_at,
+                            deleted_at
+                        from feed
+                        where deleted_at is null
+                        and last_entry_published_at < $1
+                        order by last_entry_published_at desc
+                        limit $2
+                        "#,
+                        published_before,
+                        options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
+                    )
+                    .fetch_all(pool)
+                    .await
+                } else {
+                    sqlx::query_as!(
+                        Feed,
+                        r#"select
+                            feed_id,
+                            title,
+                            url,
+                            type as "feed_type: FeedType",
+                            description,
+                            crawl_interval_minutes,
+                            last_crawl_error,
+                            last_crawled_at,
+                            last_entry_published_at,
+                            created_at,
+                            updated_at,
+                            deleted_at
+                        from feed
+                        where deleted_at is null
+                        order by last_entry_published_at desc
+                        limit $1
+                        "#,
+                        options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
+                    )
+                    .fetch_all(pool)
+                    .await
+
+                }
+            }
+        }
     }
 
     pub async fn create(pool: &PgPool, payload: CreateFeed) -> Result<Feed> {

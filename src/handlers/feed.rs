@@ -14,7 +14,6 @@ use sqlx::PgPool;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::StreamExt;
-use url::Url;
 
 use crate::actors::feed_crawler::{FeedCrawlerHandle, FeedCrawlerHandleMessage};
 use crate::config::Config;
@@ -145,8 +144,6 @@ pub async fn post(
         AddFeedError::CreateFeedError(add_feed.url.clone(), err)
     })?;
 
-    let url: Url = Url::parse(&add_feed.url)
-        .map_err(|err| AddFeedError::InvalidUrl(add_feed.url.clone(), err))?;
     let receiver = feed_crawler.crawl(feed.feed_id).await;
     {
         let mut crawls = crawls.lock().map_err(|_| {
@@ -167,6 +164,7 @@ pub async fn post(
                         li id=(feed_id) { (feed_link(&feed, true)) }
                     }
                 }
+                turbo-stream action="remove" target="no-feeds";
             }
             .into_string(),
         ),

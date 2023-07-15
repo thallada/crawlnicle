@@ -103,7 +103,7 @@ div.feeds {
   }
 }
 
-ul#feeds {
+.feeds-list {
   grid-area: 'feeds';
   list-style: none;
   padding: 0;

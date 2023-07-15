@@ -4,18 +4,29 @@ use maud::html;
 use sqlx::PgPool;
 
 use crate::error::Result;
-use crate::models::feed::Feed;
+use crate::models::feed::{Feed, GetFeedsOptions, DEFAULT_FEEDS_PAGE_SIZE};
 use crate::partials::{feed_link::feed_link, layout::Layout};
 
 pub async fn get(State(pool): State<PgPool>, layout: Layout) -> Result<Response> {
-    // TODO: pagination
-    let feeds = Feed::get_all(&pool).await?;
+    let options = GetFeedsOptions::default();
+    let feeds = Feed::get_all(&pool, options.clone()).await?;
+    let len = feeds.len() as i64;
     Ok(layout.render(html! {
         h2 { "Feeds" }
         div class="feeds" {
-            ul id="feeds" {
-                @for feed in feeds {
-                    li { (feed_link(&feed, false)) }
+            div class="feeds-list" {
+                @if len == 0 {
+                    p id="no-feeds" { "No feeds found." }
+                } else {
+                    ul id="feeds" {
+                        @for feed in feeds {
+                            li { (feed_link(&feed, false)) }
+                        }
+                    }
+                }
+                // TODO: pagination
+                @if len == options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE) {
+                    button id="load-more-feeds" { "Load More" }
                 }
             }
             div class="add-feed" {
