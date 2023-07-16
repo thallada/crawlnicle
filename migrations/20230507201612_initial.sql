@@ -22,7 +22,6 @@ begin
         BEFORE UPDATE
         ON %s
         FOR EACH ROW
-        WHEN (OLD is distinct from NEW)
     EXECUTE FUNCTION set_updated_at();', tablename);
 end;
 $$ language plpgsql;
@@ -41,6 +40,8 @@ create table if not exists "feed" (
     description text default null,
     crawl_interval_minutes int not null default 180,
     last_crawl_error text default null,
+    etag_header text default null,
+    last_modified_header text default null,
     last_crawled_at timestamptz default null,
     last_entry_published_at timestamptz default null,
     created_at timestamptz not null default now(),
@@ -57,6 +58,8 @@ create table if not exists "entry" (
     url varchar(2048) not null,
     description text,
     feed_id uuid not null references "feed" (feed_id) on delete cascade,
+    etag_header text default null,
+    last_modified_header text default null,
     published_at timestamptz not null,
     created_at timestamptz not null default now(),
     updated_at timestamptz,

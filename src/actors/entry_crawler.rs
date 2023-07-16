@@ -7,7 +7,7 @@ use readability::extractor;
 use reqwest::Client;
 use sqlx::PgPool;
 use tokio::sync::{broadcast, mpsc};
-use tracing::{info, instrument};
+use tracing::{debug, info, instrument};
 use url::Url;
 
 use crate::domain_locks::DomainLocks;
@@ -80,7 +80,7 @@ impl EntryCrawler {
 
     #[instrument(skip_all, fields(entry = %entry.url))]
     async fn crawl_entry(&self, entry: Entry) -> EntryCrawlerResult<Entry> {
-        info!("Fetching and parsing entry");
+        info!("starting fetch");
         let content_dir = Path::new(&self.content_dir);
         let url =
             Url::parse(&entry.url).map_err(|_| EntryCrawlerError::InvalidUrl(entry.url.clone()))?;
@@ -136,7 +136,7 @@ impl EntryCrawler {
 
     #[instrument(skip_all)]
     async fn run(&mut self) {
-        info!("starting entry crawler");
+        debug!("starting entry crawler");
         while let Some(msg) = self.receiver.recv().await {
             self.handle_message(msg).await;
         }

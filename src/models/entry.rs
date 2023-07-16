@@ -15,6 +15,8 @@ pub struct Entry {
     pub url: String,
     pub description: Option<String>,
     pub feed_id: Uuid,
+    pub etag_header: Option<String>,
+    pub last_modified_header: Option<String>,
     pub published_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
@@ -272,7 +274,9 @@ impl Entry {
                 url = $3,
                 description = $4,
                 feed_id = $5,
-                published_at = $6
+                etag_header = $6,
+                last_modified_header = $7,
+                published_at = $8
             where entry_id = $1
             returning *
             ",
@@ -281,6 +285,8 @@ impl Entry {
             payload.url,
             payload.description,
             payload.feed_id,
+            payload.etag_header,
+            payload.last_modified_header,
             payload.published_at,
         )
         .fetch_one(pool)

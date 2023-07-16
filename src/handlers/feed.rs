@@ -7,17 +7,14 @@ use axum::response::{IntoResponse, Redirect, Response, Sse};
 use axum::Form;
 use feed_rs::parser;
 use maud::html;
-use reqwest::Client;
 use serde::Deserialize;
 use serde_with::{serde_as, NoneAsEmptyString};
 use sqlx::PgPool;
-use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::StreamExt;
 
-use crate::actors::feed_crawler::{FeedCrawlerHandle, FeedCrawlerHandleMessage};
-use crate::config::Config;
-use crate::domain_locks::DomainLocks;
+use crate::actors::crawl_scheduler::{CrawlSchedulerHandle, CrawlSchedulerHandleMessage};
+use crate::actors::feed_crawler::FeedCrawlerHandleMessage;
 use crate::error::{Error, Result};
 use crate::models::entry::Entry;
 use crate::models::feed::{CreateFeed, Feed};
@@ -109,19 +106,9 @@ impl IntoResponse for AddFeedError {
 pub async fn post(
     State(pool): State<PgPool>,
     State(crawls): State<Crawls>,
-    State(domain_locks): State<DomainLocks>,
-    State(config): State<Config>,
+    State(crawl_scheduler): State<CrawlSchedulerHandle>,
     Form(add_feed): Form<AddFeed>,
 ) -> AddFeedResult<Response> {
-    // TODO: store the client in axum state (as long as it can be used concurrently?)
-    let client = Client::new();
-    let feed_crawler = FeedCrawlerHandle::new(
-        pool.clone(),
-        client.clone(),
-        domain_locks.clone(),
-        config.content_dir.clone(),
-    );
-
     let feed = Feed::create(
         &pool,
         CreateFeed {
@@ -144,7 +131,7 @@ pub async fn post(
         AddFeedError::CreateFeedError(add_feed.url.clone(), err)
     })?;
 
-    let receiver = feed_crawler.crawl(feed.feed_id).await;
+    let receiver = crawl_scheduler.schedule(feed.feed_id).await;
     {
         let mut crawls = crawls.lock().map_err(|_| {
             AddFeedError::CreateFeedError(add_feed.url.clone(), Error::InternalServerError)
@@ -185,20 +172,24 @@ pub async fn stream(
     let stream = BroadcastStream::new(receiver);
     let feed_id = format!("feed-{}", id);
     let stream = stream.map(move |msg| match msg {
-        Ok(FeedCrawlerHandleMessage::Feed(Ok(feed))) => Ok::<Event, String>(
-            Event::default().data(
-                html! {
-                    turbo-stream action="remove" target="feed-stream" {}
-                    turbo-stream action="replace" target=(feed_id) {
-                        template {
-                            li id=(feed_id) { (feed_link(&feed, false)) }
+        Ok(CrawlSchedulerHandleMessage::FeedCrawler(FeedCrawlerHandleMessage::Feed(Ok(feed)))) => {
+            Ok::<Event, String>(
+                Event::default().data(
+                    html! {
+                        turbo-stream action="remove" target="feed-stream" {}
+                        turbo-stream action="replace" target=(feed_id) {
+                            template {
+                                li id=(feed_id) { (feed_link(&feed, false)) }
+                            }
                         }
                     }
-                }
-                .into_string(),
-            ),
-        ),
-        Ok(FeedCrawlerHandleMessage::Feed(Err(error))) => Ok(Event::default().data(
+                    .into_string(),
+                ),
+            )
+        }
+        Ok(CrawlSchedulerHandleMessage::FeedCrawler(FeedCrawlerHandleMessage::Feed(Err(
+            error,
+        )))) => Ok(Event::default().data(
             html! {
                 turbo-stream action="remove" target="feed-stream" {}
                 turbo-stream action="replace" target=(feed_id) {
@@ -210,18 +201,22 @@ pub async fn stream(
             .into_string(),
         )),
         // TODO: these Entry messages are not yet sent, need to handle them better
-        Ok(FeedCrawlerHandleMessage::Entry(Ok(_))) => Ok(Event::default().data(
-            html! {
-                turbo-stream action="remove" target="feed-stream" {}
-                turbo-stream action="replace" target=(feed_id) {
-                    template {
-                        li id=(feed_id) { "fetched entry" }
+        Ok(CrawlSchedulerHandleMessage::FeedCrawler(FeedCrawlerHandleMessage::Entry(Ok(_)))) => {
+            Ok(Event::default().data(
+                html! {
+                    turbo-stream action="remove" target="feed-stream" {}
+                    turbo-stream action="replace" target=(feed_id) {
+                        template {
+                            li id=(feed_id) { "fetched entry" }
+                        }
                     }
                 }
-            }
-            .into_string(),
-        )),
-        Ok(FeedCrawlerHandleMessage::Entry(Err(error))) => Ok(Event::default().data(
+                .into_string(),
+            ))
+        }
+        Ok(CrawlSchedulerHandleMessage::FeedCrawler(FeedCrawlerHandleMessage::Entry(Err(
+            error,
+        )))) => Ok(Event::default().data(
             html! {
                 turbo-stream action="remove" target="feed-stream" {}
                 turbo-stream action="replace" target=(feed_id) {
@@ -232,7 +227,7 @@ pub async fn stream(
             }
             .into_string(),
         )),
-        Err(BroadcastStreamRecvError::Lagged(_)) => Ok(Event::default()),
+        _ => Ok(Event::default()),
     });
     Ok(Sse::new(stream).keep_alive(
         KeepAlive::new()

@@ -3,11 +3,14 @@ use std::fmt::{self, Display, Formatter};
 
 use chrono::{Duration, Utc};
 use feed_rs::parser;
-use reqwest::Client;
+use reqwest::StatusCode;
+use reqwest::{
+    header::{self, HeaderMap},
+    Client,
+};
 use sqlx::PgPool;
 use tokio::sync::{broadcast, mpsc};
-use tracing::log::warn;
-use tracing::{error, info, info_span, instrument};
+use tracing::{debug, error, info, info_span, instrument, warn};
 use url::Url;
 use uuid::Uuid;
 
@@ -94,20 +97,82 @@ impl FeedCrawler {
         let domain = url
             .domain()
             .ok_or(FeedCrawlerError::InvalidUrl(feed.url.clone()))?;
-        let bytes = self
+        let mut headers = HeaderMap::new();
+        if let Some(etag) = &feed.etag_header {
+            if let Ok(etag) = etag.parse() {
+                headers.insert(header::IF_NONE_MATCH, etag);
+            } else {
+                warn!(%etag, "failed to parse saved etag header");
+            }
+        }
+        if let Some(last_modified) = &feed.last_modified_header {
+            if let Ok(last_modified) = last_modified.parse() {
+                headers.insert(header::IF_MODIFIED_SINCE, last_modified);
+            } else {
+                warn!(
+                    %last_modified,
+                    "failed to parse saved last_modified header",
+                );
+            }
+        }
+
+        info!(url=%url, "starting fetch");
+        let resp = self
             .domain_locks
             .run_request(domain, async {
                 self.client
                     .get(url.clone())
+                    .headers(headers)
                     .send()
-                    .await
-                    .map_err(|_| FeedCrawlerError::FetchError(url.clone()))?
-                    .bytes()
                     .await
                     .map_err(|_| FeedCrawlerError::FetchError(url.clone()))
             })
             .await?;
+        let headers = resp.headers();
+        if let Some(etag) = headers.get(header::ETAG) {
+            if let Ok(etag) = etag.to_str() {
+                feed.etag_header = Some(etag.to_string());
+            } else {
+                warn!(?etag, "failed to convert response etag header to string");
+            }
+        }
+        if let Some(last_modified) = headers.get(header::LAST_MODIFIED) {
+            if let Ok(last_modified) = last_modified.to_str() {
+                feed.last_modified_header = Some(last_modified.to_string());
+            } else {
+                warn!(
+                    ?last_modified,
+                    "failed to convert response last_modified header to string",
+                );
+            }
+        }
         info!(url=%url, "fetched feed");
+        if resp.status() == StatusCode::NOT_MODIFIED {
+            info!("feed returned not modified status");
+            feed.last_crawled_at = Some(Utc::now());
+            feed.last_crawl_error = None;
+            let feed = feed
+                .save(&self.pool)
+                .await
+                .map_err(|_| FeedCrawlerError::CreateFeedError(url.clone()))?;
+            info!("updated feed in db");
+            return Ok(feed);
+        } else if !resp.status().is_success() {
+            warn!("feed returned non-successful status");
+            feed.last_crawl_error = resp.status().canonical_reason().map(|s| s.to_string());
+            let feed = feed
+                .save(&self.pool)
+                .await
+                .map_err(|_| FeedCrawlerError::CreateFeedError(url.clone()))?;
+            info!("updated feed in db");
+            return Ok(feed);
+        }
+
+        let bytes = resp
+            .bytes()
+            .await
+            .map_err(|_| FeedCrawlerError::FetchError(url.clone()))?;
+        
         let parsed_feed =
             parser::parse(&bytes[..]).map_err(|_| FeedCrawlerError::ParseError(url.clone()))?;
         info!("parsed feed");
@@ -131,15 +196,16 @@ impl FeedCrawler {
                     Ordering::Greater => {
                         feed.crawl_interval_minutes =
                             i32::max(feed.crawl_interval_minutes * 2, MAX_CRAWL_INTERVAL_MINUTES);
-                    },
+                    }
                     Ordering::Less => {
                         feed.crawl_interval_minutes =
                             i32::max(feed.crawl_interval_minutes / 2, MIN_CRAWL_INTERVAL_MINUTES);
-                    },
-                    Ordering::Equal => {},
+                    }
+                    Ordering::Equal => {}
                 }
             }
         }
+        feed.last_entry_published_at = last_entry_published_at;
         let feed = feed
             .save(&self.pool)
             .await
@@ -162,7 +228,7 @@ impl FeedCrawler {
                 };
                 payload.push(entry);
             } else {
-                warn!("Skipping feed entry with no links");
+                warn!("skipping feed entry with no links");
             }
         }
         let entries = Entry::bulk_upsert(&self.pool, payload)
@@ -195,12 +261,13 @@ impl FeedCrawler {
             } => {
                 let result = self.crawl_feed(feed_id).await;
                 if let Err(error) = &result {
-                    match Feed::update_crawl_error(&self.pool, feed_id, format!("{}", error)).await {
+                    match Feed::update_crawl_error(&self.pool, feed_id, format!("{}", error)).await
+                    {
                         Ok(_) => info!("updated feed last_crawl_error"),
                         Err(e) => error!("failed to update feed last_crawl_error: {}", e),
                     }
                 }
-                
+
                 // ignore the result since the initiator may have cancelled waiting for the
                 // response, and that is ok
                 let _ = respond_to.send(FeedCrawlerHandleMessage::Feed(result));
@@ -210,7 +277,7 @@ impl FeedCrawler {
 
     #[instrument(skip_all)]
     async fn run(&mut self) {
-        info!("starting feed crawler");
+        debug!("starting feed crawler");
         while let Some(msg) = self.receiver.recv().await {
             self.handle_message(msg).await;
         }

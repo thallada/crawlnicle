@@ -10,9 +10,10 @@ use std::env;
 use tracing::info;
 use uuid::Uuid;
 
-use lib::models::entry::{Entry, CreateEntry};
+use lib::models::entry::{CreateEntry, Entry};
 use lib::models::feed::{CreateFeed, Feed, FeedType};
 use lib::uuid::Base62Uuid;
+use lib::USER_AGENT;
 
 /// CLI for crawlnicle
 #[derive(Parser)]
@@ -137,8 +138,8 @@ pub async fn main() -> Result<()> {
         }
         Commands::Crawl(CrawlFeed { id }) => {
             info!("Crawling feed {}...", Base62Uuid::from(id));
-            let client = Client::new();
-            // NOTE: this is not the same DomainLocks as the one used in the server so, if the 
+            let client = Client::builder().user_agent(USER_AGENT).build()?;
+            // NOTE: this is not the same DomainLocks as the one used in the server so, if the
             // server is running, it will *not* serialize same-domain requests with it.
             let domain_locks = DomainLocks::new();
             let feed_crawler = FeedCrawlerHandle::new(

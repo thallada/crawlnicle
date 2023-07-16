@@ -107,9 +107,7 @@ impl Layout {
                 }
                 body {
                     (header(&self.title))
-                    turbo-frame id="main" data-turbo-action="advance" {
-                        (template)
-                    }
+                    (template)
                 }
             }
         }
