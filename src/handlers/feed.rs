@@ -133,9 +133,7 @@ pub async fn post(
 
     let receiver = crawl_scheduler.schedule(feed.feed_id).await;
     {
-        let mut crawls = crawls.lock().map_err(|_| {
-            AddFeedError::CreateFeedError(add_feed.url.clone(), Error::InternalServerError)
-        })?;
+        let mut crawls = crawls.lock().await;
         crawls.insert(feed.feed_id, receiver);
     }
 
@@ -164,7 +162,7 @@ pub async fn stream(
     State(crawls): State<Crawls>,
 ) -> Result<impl IntoResponse> {
     let receiver = {
-        let mut crawls = crawls.lock().expect("crawls lock poisoned");
+        let mut crawls = crawls.lock().await;
         crawls.remove(&id.as_uuid())
     }
     .ok_or_else(|| Error::NotFound("feed stream", id.as_uuid()))?;

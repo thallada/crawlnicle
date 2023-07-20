@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     net::SocketAddr,
     path::Path,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use anyhow::Result;
@@ -17,6 +17,7 @@ use notify::Watcher;
 use reqwest::Client;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::watch::channel;
+use tokio::sync::Mutex;
 use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tower_livereload::LiveReloadLayer;
