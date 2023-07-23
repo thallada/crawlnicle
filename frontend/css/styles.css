@@ -122,33 +122,34 @@ div.add-feed {
   grid-area: 'add-feed';
 }
 
-form.add-feed-form .form-grid {
+form.feed-form .form-grid {
   display: grid;
   grid-template-columns: fit-content(100%) minmax(100px, 400px);
   grid-gap: 16px;
+  width: 100%;
+  margin-bottom: 32px;
 }
 
-form.add-feed-form .form-grid label {
+form.feed-form .form-grid label {
   font-size: 16px;
   font-weight: bold;
   grid-column: 1 / 2;
 }
 
-form.add-feed-form .form-grid input, form.add-feed-form .form-grid textarea {
+form.feed-form .form-grid input, form.feed-form .form-grid textarea {
   font-size: 14px;
   grid-column: 2 / 3;
 }
 
-form.add-feed-form .form-grid textarea {
+form.feed-form .form-grid textarea {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   resize: vertical;
 }
 
-form.add-feed-form button {
+form.feed-form .form-grid button {
   font-size: 14px;
-  margin-top: 24px;
   padding: 4px 8px;
-  float: right;
+  grid-column: 3 / 4;
 }
 
 /* Feed */

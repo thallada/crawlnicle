@@ -31,16 +31,19 @@ pub async fn get(State(pool): State<PgPool>, layout: Layout) -> Result<Response>
             }
             div class="add-feed" {
                 h3 { "Add Feed" }
-                form action="/feed" method="post" class="add-feed-form" {
+                form action="/feed" method="post" class="feed-form" {
                     div class="form-grid" {
-                        label for="url" { "URL (required): " }
+                        label for="url" { "URL: " }
                         input type="text" id="url" name="url" placeholder="https://example.com/feed.xml" required="true";
-                        label for="title" { "Title: " }
-                        input type="text" id="title" name="title" placeholder="Feed title";
-                        label { "Description: " }
-                        textarea id="description" name="description" placeholder="Feed description" {}
+                        button type="submit" { "Add Feed" }
                     }
-                    button type="submit" { "Add Feed" }
+                }
+                form action="/import/opml" method="post" enctype="mulipart/form-data" class="feed-form" {
+                    div class="form-grid" {
+                        label for="opml" { "OPML: " }
+                        input type="file" id="opml" name="opml" required="true" accept="text/x-opml,application/xml,text/xml";
+                        button type="submit" { "Import Feeds" }
+                    }
                 }
             } 
         }

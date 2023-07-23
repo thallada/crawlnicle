@@ -9,6 +9,7 @@ use reqwest::Client;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::actors::importer::{ImporterHandle, ImporterHandleMessage};
 use crate::actors::crawl_scheduler::{CrawlSchedulerHandle, CrawlSchedulerHandleMessage};
 use crate::config::Config;
 use crate::domain_locks::DomainLocks;
@@ -23,7 +24,24 @@ use crate::domain_locks::DomainLocks;
 /// This map should only contain crawls that have just been created but not yet subscribed to.
 /// Entries are only added when a user adds a feed in the UI and entries are removed by the same
 /// user once a server-sent event connection is established.
+///
+/// TODO: remove the entries in the CrawlScheduler once the crawl is complete if the user never 
+/// requested the stream to remove it themselves.
 pub type Crawls = Arc<Mutex<HashMap<Uuid, broadcast::Receiver<CrawlSchedulerHandleMessage>>>>;
+
+/// A map of unique import IDs to a channel receiver for the active `Importer` running that import.
+///
+/// Same as the `Crawls` map, the only purpose of this is to keep track of active imports so that 
+/// axum handlers can subscribe to the result of the import via the receiver channel which are then 
+/// sent to end-users as a stream of server-sent events.
+///
+/// This map should only contain imports that have just been created but not yet subscribed to.
+/// Entries are only added when a user adds uploads an OPML to import and entries are removed by 
+/// the same user once a server-sent event connection is established.
+///
+/// TODO: remove the entries in the Importer once the crawl is complete if the user never requested 
+/// the stream to remove it themselves.
+pub type Imports = Arc<Mutex<HashMap<Uuid, broadcast::Receiver<ImporterHandleMessage>>>>;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -34,6 +52,8 @@ pub struct AppState {
     pub domain_locks: DomainLocks,
     pub client: Client,
     pub crawl_scheduler: CrawlSchedulerHandle,
+    pub importer: ImporterHandle,
+    pub imports: Imports,
 }
 
 impl FromRef<AppState> for PgPool {
@@ -75,5 +95,17 @@ impl FromRef<AppState> for Client {
 impl FromRef<AppState> for CrawlSchedulerHandle {
     fn from_ref(state: &AppState) -> Self {
         state.crawl_scheduler.clone()
+    }
+}
+
+impl FromRef<AppState> for ImporterHandle {
+    fn from_ref(state: &AppState) -> Self {
+        state.importer.clone()
+    }
+}
+
+impl FromRef<AppState> for Imports {
+    fn from_ref(state: &AppState) -> Self {
+        state.imports.clone()
     }
 }

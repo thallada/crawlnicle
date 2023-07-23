@@ -202,7 +202,6 @@ pub async fn stream(
         Ok(CrawlSchedulerHandleMessage::FeedCrawler(FeedCrawlerHandleMessage::Entry(Ok(_)))) => {
             Ok(Event::default().data(
                 html! {
-                    turbo-stream action="remove" target="feed-stream" {}
                     turbo-stream action="replace" target=(feed_id) {
                         template {
                             li id=(feed_id) { "fetched entry" }
@@ -216,7 +215,6 @@ pub async fn stream(
             error,
         )))) => Ok(Event::default().data(
             html! {
-                turbo-stream action="remove" target="feed-stream" {}
                 turbo-stream action="replace" target=(feed_id) {
                     template {
                         li id=(feed_id) { span class="error" { (error) } }

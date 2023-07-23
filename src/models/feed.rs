@@ -81,7 +81,7 @@ pub struct CreateFeed {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Default, Validate)]
 pub struct UpsertFeed {
     #[validate(length(max = 255))]
     pub title: Option<String>,

@@ -14,15 +14,17 @@ path = "src/lib.rs"
 [dependencies]
 ansi-to-html = "0.1"
 anyhow = "1"
-axum = { version = "0.6", features = ["form"] }
+axum = { version = "0.6", features = ["form", "multipart"] }
 bytes = "1.4"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.3", features = ["derive", "env"] }
 dotenvy = "0.15"
 feed-rs = "1.3"
+futures = "0.3"
 maud = { version = "0.25", features = ["axum"] }
 notify = "6"
 once_cell = "1.17"
+opml = "1.1"
 readability = "0.2"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1", features = ["derive"] }

@@ -1,3 +1,4 @@
+use axum::extract::multipart::MultipartError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -25,6 +26,12 @@ pub enum Error {
 
     #[error("validation error in request body")]
     InvalidEntity(#[from] ValidationErrors),
+
+    #[error("error with file upload: (0)")]
+    Upload(#[from] MultipartError),
+
+    #[error("no file uploaded")]
+    NoFile,
 
     #[error("{0}: {1} not found")]
     NotFound(&'static str, Uuid),
@@ -78,7 +85,8 @@ impl Error {
             InternalServerError | Sqlx(_) | Anyhow(_) | Reqwest(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
-            InvalidEntity(_) | RelationNotFound(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            InvalidEntity(_) | RelationNotFound(_) | NoFile => StatusCode::UNPROCESSABLE_ENTITY,
+            Upload(err) => err.status(),
         }
     }
 }

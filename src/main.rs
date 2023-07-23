@@ -24,6 +24,7 @@ use tower_livereload::LiveReloadLayer;
 use tracing::debug;
 
 use lib::actors::crawl_scheduler::CrawlSchedulerHandle;
+use lib::actors::importer::ImporterHandle;
 use lib::config::Config;
 use lib::domain_locks::DomainLocks;
 use lib::handlers;
@@ -49,6 +50,7 @@ async fn main() -> Result<()> {
     let _guards = init_tracing(&config, log_sender)?;
 
     let crawls = Arc::new(Mutex::new(HashMap::new()));
+    let imports = Arc::new(Mutex::new(HashMap::new()));
     let domain_locks = DomainLocks::new();
     let client = Client::builder().user_agent(USER_AGENT).build()?;
 
@@ -66,6 +68,10 @@ async fn main() -> Result<()> {
         config.content_dir.clone(),
     );
     let _ = crawl_scheduler.bootstrap().await;
+    let importer = ImporterHandle::new(
+        pool.clone(),
+        crawl_scheduler.clone(),
+    );
 
     let addr = format!("{}:{}", &config.host, &config.port).parse()?;
     let mut app = Router::new()
@@ -84,6 +90,8 @@ async fn main() -> Result<()> {
         .route("/entry/:id", get(handlers::entry::get))
         .route("/log", get(handlers::log::get))
         .route("/log/stream", get(handlers::log::stream))
+        .route("/import/opml", post(handlers::import::opml))
+        .route("/import/:id/stream", get(handlers::import::stream))
         .nest_service("/static", ServeDir::new("static"))
         .with_state(AppState {
             pool,
@@ -93,6 +101,8 @@ async fn main() -> Result<()> {
             domain_locks,
             client,
             crawl_scheduler,
+            importer,
+            imports,
         })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
