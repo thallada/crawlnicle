@@ -8,8 +8,10 @@ use opml::OPML;
 use sqlx::PgPool;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, instrument};
+use uuid::Uuid;
 
 use crate::actors::crawl_scheduler::{CrawlSchedulerHandle, CrawlSchedulerHandleMessage};
+use crate::actors::feed_crawler::FeedCrawlerHandleMessage;
 use crate::models::feed::{Feed, UpsertFeed};
 use crate::uuid::Base62Uuid;
 
@@ -43,6 +45,17 @@ impl Display for ImporterMessage {
                 import_id, bytes, ..
             } => write!(f, "Import({}: {} bytes)", import_id, bytes.len()),
         }
+    }
+}
+
+async fn listen_to_crawl(
+    feed_id: Uuid,
+    crawl_scheduler: CrawlSchedulerHandle,
+    respond_to: broadcast::Sender<ImporterHandleMessage>,
+) {
+    let mut receiver = crawl_scheduler.schedule(feed_id).await;
+    while let Ok(msg) = receiver.recv().await {
+        let _ = respond_to.send(ImporterHandleMessage::CrawlScheduler(msg));
     }
 }
 
@@ -80,7 +93,6 @@ impl Importer {
     ) -> ImporterResult<()> {
         let document = OPML::from_reader(&mut Cursor::new(bytes))
             .map_err(|_| ImporterError::InvalidOPML(file_name.unwrap_or(import_id.to_string())))?;
-        let mut receivers = Vec::new();
         for url in Self::gather_feed_urls(document.body.outlines) {
             let feed = Feed::upsert(
                 &self.pool,
@@ -91,19 +103,15 @@ impl Importer {
             )
             .await
             .map_err(|_| ImporterError::CreateFeedError(url))?;
-            if feed.updated_at.is_some() {
-                receivers.push(self.crawl_scheduler.schedule(feed.feed_id).await);
+            if feed.updated_at.is_none() {
+                tokio::spawn(listen_to_crawl(
+                    feed.feed_id,
+                    self.crawl_scheduler.clone(),
+                    respond_to.clone(),
+                ));
             }
         }
 
-        let mut future_recvs: FuturesUnordered<_> =
-            receivers.iter_mut().map(|rx| rx.recv()).collect();
-
-        while let Some(result) = future_recvs.next().await {
-            if let Ok(crawl_scheduler_msg) = result {
-                let _ = respond_to.send(ImporterHandleMessage::CrawlScheduler(crawl_scheduler_msg));
-            }
-        }
         Ok(())
     }
 
@@ -161,7 +169,7 @@ pub struct ImporterHandle {
 ///
 /// `ImporterHandleMessage::Import` contains the result of importing the OPML file.
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ImporterHandleMessage {
     // TODO: send stats of import or forward crawler messages?
     Import(ImporterResult<()>),

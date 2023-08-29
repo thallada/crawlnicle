@@ -444,7 +444,7 @@ impl Feed {
             r#"insert into feed (
                 title, url, type, description
             ) values (
-                $1, $2, $3, $4
+                $1, $2, COALESCE($3, 'unknown'::feed_type), $4
             ) on conflict (url) do update set
                 title = excluded.title,
                 url = excluded.url,

@@ -43,15 +43,15 @@ ul.entries {
   font-size: 16px;
 }
 
-ul.entries li {
+li.entry {
   margin-bottom: 8px;
 }
 
-ul.entries li a {
+a.entry-link {
   text-decoration: none;
 }
 
-ul.entries li em.domain {
+em.entry-link-domain {
   margin-left: 8px;
   color: rgba(0, 0, 0, 0.75);
 }
@@ -150,6 +150,20 @@ form.feed-form .form-grid button {
   font-size: 14px;
   padding: 4px 8px;
   grid-column: 3 / 4;
+}
+
+ul#add-feed-messages {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-x: hidden;
+  white-space: nowrap;
+}
+
+ul#add-feed-messages li {
+  overflow: hidden;
+  white-space: no-wrap;
+  text-overflow: ellipsis;
 }
 
 /* Feed */

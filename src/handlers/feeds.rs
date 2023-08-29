@@ -38,13 +38,14 @@ pub async fn get(State(pool): State<PgPool>, layout: Layout) -> Result<Response>
                         button type="submit" { "Add Feed" }
                     }
                 }
-                form action="/import/opml" method="post" enctype="mulipart/form-data" class="feed-form" {
+                form action="/import/opml" method="post" enctype="multipart/form-data" class="feed-form" {
                     div class="form-grid" {
                         label for="opml" { "OPML: " }
                         input type="file" id="opml" name="opml" required="true" accept="text/x-opml,application/xml,text/xml";
                         button type="submit" { "Import Feeds" }
                     }
                 }
+                ul id="add-feed-messages" {}
             } 
         }
     }))

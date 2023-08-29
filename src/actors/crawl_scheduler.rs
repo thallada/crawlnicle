@@ -123,7 +123,11 @@ impl CrawlScheduler {
         let crawl_interval = Duration::from_secs(feed.crawl_interval_minutes as u64 * 60);
         let mut interval = tokio::time::interval(crawl_interval);
         if let Some(last_crawled_at) = feed.last_crawled_at {
+            dbg!(last_crawled_at);
+            dbg!(Utc::now());
             if let Ok(duration_since_last_crawl) = (Utc::now() - last_crawled_at).to_std() {
+                dbg!(duration_since_last_crawl);
+                dbg!(crawl_interval);
                 if duration_since_last_crawl < crawl_interval {
                     info!(
                         "last crawled at {:?}, crawling again in {:?}",
@@ -145,27 +149,27 @@ impl CrawlScheduler {
         );
         tokio::spawn(async move {
             loop {
-                debug!("spawned crawler for feed");
                 interval.tick().await;
-                debug!("tick!");
                 let mut receiver = feed_crawler.crawl(feed.feed_id).await;
-                match receiver.recv().await {
-                    Ok(FeedCrawlerHandleMessage::Feed(Ok(feed))) => {
-                        let crawl_interval =
-                            Duration::from_secs(feed.crawl_interval_minutes as u64 * 60);
-                        interval = interval_at(Instant::now() + crawl_interval, crawl_interval);
-                        info!(
-                            minutes = feed.crawl_interval_minutes,
-                            "updated crawl interval"
-                        );
-                        let _ = respond_to.send(CrawlSchedulerHandleMessage::FeedCrawler(
-                            FeedCrawlerHandleMessage::Feed(Ok(feed)),
-                        ));
+                while let Ok(msg) = receiver.recv().await {
+                    match msg {
+                        FeedCrawlerHandleMessage::Feed(Ok(feed)) => {
+                            let crawl_interval =
+                                Duration::from_secs(feed.crawl_interval_minutes as u64 * 60);
+                            interval = interval_at(Instant::now() + crawl_interval, crawl_interval);
+                            info!(
+                                minutes = feed.crawl_interval_minutes,
+                                "updated crawl interval"
+                            );
+                            let _ = respond_to.send(CrawlSchedulerHandleMessage::FeedCrawler(
+                                FeedCrawlerHandleMessage::Feed(Ok(feed)),
+                            ));
+                        }
+                        result => {
+                            let _ =
+                                respond_to.send(CrawlSchedulerHandleMessage::FeedCrawler(result));
+                        }
                     }
-                    Ok(result) => {
-                        let _ = respond_to.send(CrawlSchedulerHandleMessage::FeedCrawler(result));
-                    }
-                    _ => {}
                 }
             }
         });
@@ -229,7 +233,7 @@ pub struct CrawlSchedulerHandle {
 /// `CrawlSchedulerHandle`.
 ///
 /// `CrawlSchedulerHandleMessage::Feed` contains the result of crawling a feed url.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum CrawlSchedulerHandleMessage {
     Bootstrap(CrawlSchedulerResult<()>),
     Schedule(CrawlSchedulerResult<()>),
@@ -268,7 +272,10 @@ impl CrawlSchedulerHandle {
     /// Sends a `CrawlSchedulerMessage::Schedule` message to the running `CrawlScheduler` actor.
     ///
     /// Listen to the result of the scheduling via the returned `broadcast::Receiver`.
-    pub async fn schedule(&self, feed_id: Uuid) -> broadcast::Receiver<CrawlSchedulerHandleMessage> {
+    pub async fn schedule(
+        &self,
+        feed_id: Uuid,
+    ) -> broadcast::Receiver<CrawlSchedulerHandleMessage> {
         let (sender, receiver) = broadcast::channel(8);
         let msg = CrawlSchedulerMessage::Schedule {
             feed_id,

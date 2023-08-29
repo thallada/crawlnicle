@@ -14,7 +14,9 @@ use tracing::{debug, error, info, info_span, instrument, warn};
 use url::Url;
 use uuid::Uuid;
 
-use crate::actors::entry_crawler::EntryCrawlerHandle;
+use crate::actors::entry_crawler::{
+    EntryCrawlerHandle, EntryCrawlerHandleMessage, EntryCrawlerResult,
+};
 use crate::domain_locks::DomainLocks;
 use crate::models::entry::{CreateEntry, Entry};
 use crate::models::feed::{Feed, MAX_CRAWL_INTERVAL_MINUTES, MIN_CRAWL_INTERVAL_MINUTES};
@@ -87,7 +89,11 @@ impl FeedCrawler {
     }
 
     #[instrument(skip_all, fields(feed_id = %feed_id))]
-    async fn crawl_feed(&self, feed_id: Uuid) -> FeedCrawlerResult<Feed> {
+    async fn crawl_feed(
+        &self,
+        feed_id: Uuid,
+        respond_to: broadcast::Sender<FeedCrawlerHandleMessage>,
+    ) -> FeedCrawlerResult<Feed> {
         let mut feed = Feed::get(&self.pool, feed_id)
             .await
             .map_err(|_| FeedCrawlerError::GetFeedError(Base62Uuid::from(feed_id)))?;
@@ -159,6 +165,7 @@ impl FeedCrawler {
             return Ok(feed);
         } else if !resp.status().is_success() {
             warn!("feed returned non-successful status");
+            feed.last_crawled_at = Some(Utc::now());
             feed.last_crawl_error = resp.status().canonical_reason().map(|s| s.to_string());
             let feed = feed
                 .save(&self.pool)
@@ -172,7 +179,7 @@ impl FeedCrawler {
             .bytes()
             .await
             .map_err(|_| FeedCrawlerError::FetchError(url.clone()))?;
-        
+
         let parsed_feed =
             parser::parse(&bytes[..]).map_err(|_| FeedCrawlerError::ParseError(url.clone()))?;
         info!("parsed feed");
@@ -246,8 +253,10 @@ impl FeedCrawler {
                 self.domain_locks.clone(),
                 self.content_dir.clone(),
             );
-            // TODO: ignoring this receiver for the time being, pipe through events eventually
-            let _ = entry_crawler.crawl(entry).await;
+            let mut entry_receiver = entry_crawler.crawl(entry).await;
+            while let Ok(EntryCrawlerHandleMessage::Entry(result)) = entry_receiver.recv().await {
+                let _ = respond_to.send(FeedCrawlerHandleMessage::Entry(result));
+            }
         }
         Ok(feed)
     }
@@ -259,7 +268,7 @@ impl FeedCrawler {
                 feed_id,
                 respond_to,
             } => {
-                let result = self.crawl_feed(feed_id).await;
+                let result = self.crawl_feed(feed_id, respond_to.clone()).await;
                 if let Err(error) = &result {
                     match Feed::update_crawl_error(&self.pool, feed_id, format!("{}", error)).await
                     {
@@ -298,10 +307,10 @@ pub struct FeedCrawlerHandle {
 ///
 /// `FeedCrawlerHandleMessage::Feed` contains the result of crawling a feed url.
 /// `FeedCrawlerHandleMessage::Entry` contains the result of crawling an entry url within the feed.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum FeedCrawlerHandleMessage {
     Feed(FeedCrawlerResult<Feed>),
-    Entry(FeedCrawlerResult<Entry>),
+    Entry(EntryCrawlerResult<Entry>),
 }
 
 impl FeedCrawlerHandle {

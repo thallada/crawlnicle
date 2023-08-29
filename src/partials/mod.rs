@@ -1,3 +1,4 @@
+pub mod entry_link;
 pub mod entry_list;
 pub mod feed_link;
 pub mod header;
