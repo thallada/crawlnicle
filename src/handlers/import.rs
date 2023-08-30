@@ -23,24 +23,16 @@ pub async fn opml(
     State(importer): State<ImporterHandle>,
     mut multipart: Multipart,
 ) -> Result<Response> {
-    dbg!("opml handler");
-    if let Some(field) = multipart.next_field().await.map_err(|err| {
-        dbg!(&err);
-        err
-    })? {
+    if let Some(field) = multipart.next_field().await? {
         let import_id = Base62Uuid::new();
-        dbg!(&import_id);
         let file_name = field.file_name().map(|s| s.to_string());
-        dbg!(&file_name);
         let bytes = field.bytes().await?;
-        dbg!(&bytes.len());
         let receiver = importer.import(import_id, file_name, bytes).await;
         {
             let mut imports = imports.lock().await;
             imports.insert(import_id.as_uuid(), receiver);
         }
 
-        let import_html_id = format!("import-{}", import_id);
         let import_stream = format!("/import/{}/stream", import_id);
         return Ok((
             StatusCode::CREATED,
@@ -59,7 +51,6 @@ pub async fn opml(
         )
             .into_response());
     }
-    dbg!("no file");
     Err(Error::NoFile)
 }
 

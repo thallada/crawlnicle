@@ -49,3 +49,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.3", features = ["serde"] }
 url = "2.4"
 validator = { version = "0.16", features = ["derive"] }
+ammonia = "3.3.0"

@@ -2,6 +2,7 @@ use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::Path;
 
+use ammonia::clean;
 use bytes::Buf;
 use readability::extractor;
 use reqwest::Client;
@@ -114,7 +115,9 @@ impl EntryCrawler {
         //         .await
         //         .map_err(|_| EntryCrawlerError::CreateEntryError(entry.url.clone()))?;
         // };
-        fs::write(content_dir.join(format!("{}.html", id)), article.content)
+        let content = clean(&article.content);
+        info!("sanitized content");
+        fs::write(content_dir.join(format!("{}.html", id)), content)
             .map_err(|_| EntryCrawlerError::SaveContentError(entry.url.clone()))?;
         fs::write(content_dir.join(format!("{}.txt", id)), article.text)
             .map_err(|_| EntryCrawlerError::SaveContentError(entry.url.clone()))?;

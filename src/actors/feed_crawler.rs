@@ -201,12 +201,24 @@ impl FeedCrawler {
                     .cmp(&Duration::minutes(feed.crawl_interval_minutes.into()))
                 {
                     Ordering::Greater => {
-                        feed.crawl_interval_minutes =
-                            i32::max(feed.crawl_interval_minutes * 2, MAX_CRAWL_INTERVAL_MINUTES);
+                        feed.crawl_interval_minutes = i32::max(
+                            (feed.crawl_interval_minutes as f32 * 1.2).round() as i32,
+                            MAX_CRAWL_INTERVAL_MINUTES,
+                        );
+                        info!(
+                            interval = feed.crawl_interval_minutes,
+                            "increased crawl interval"
+                        );
                     }
                     Ordering::Less => {
-                        feed.crawl_interval_minutes =
-                            i32::max(feed.crawl_interval_minutes / 2, MIN_CRAWL_INTERVAL_MINUTES);
+                        feed.crawl_interval_minutes = i32::max(
+                            (feed.crawl_interval_minutes as f32 / 1.2).round() as i32,
+                            MIN_CRAWL_INTERVAL_MINUTES,
+                        );
+                        info!(
+                            interval = feed.crawl_interval_minutes,
+                            "decreased crawl interval"
+                        );
                     }
                     Ordering::Equal => {}
                 }

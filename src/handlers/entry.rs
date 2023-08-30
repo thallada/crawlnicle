@@ -20,18 +20,18 @@ pub async fn get(
     let entry = Entry::get(&pool, id.as_uuid()).await?;
     let content_dir = std::path::Path::new(&config.content_dir);
     let content_path = content_dir.join(format!("{}.html", entry.entry_id));
+    let title = entry.title.unwrap_or_else(|| "Untitled".to_string());
+    let published_at = entry.published_at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let content = fs::read_to_string(content_path).unwrap_or_else(|_| "No content".to_string());
     Ok(layout.render(html! {
         article {
-            @let title = entry.title.unwrap_or_else(|| "Untitled".to_string());
             h2 { a href=(entry.url) { (title) } }
-            @let published_at = entry.published_at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
             span class="published" {
                 strong { "Published: " }
                 time datetime=(published_at) data-controller="local-time" {
                     (published_at)
                 }
             }
-            @let content = fs::read_to_string(content_path).unwrap_or_else(|_| "No content".to_string());
             (PreEscaped(content))
         }
     }))
