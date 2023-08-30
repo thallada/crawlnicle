@@ -206,7 +206,7 @@ impl FeedCrawler {
                 {
                     Ordering::Greater => {
                         feed.crawl_interval_minutes = i32::max(
-                            (feed.crawl_interval_minutes as f32 * 1.2).round() as i32,
+                            (feed.crawl_interval_minutes as f32 * 1.2).ceil() as i32,
                             MAX_CRAWL_INTERVAL_MINUTES,
                         );
                         info!(
@@ -216,7 +216,7 @@ impl FeedCrawler {
                     }
                     Ordering::Less => {
                         feed.crawl_interval_minutes = i32::max(
-                            (feed.crawl_interval_minutes as f32 / 1.2).round() as i32,
+                            (feed.crawl_interval_minutes as f32 / 1.2).ceil() as i32,
                             MIN_CRAWL_INTERVAL_MINUTES,
                         );
                         info!(
