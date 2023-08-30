@@ -25,11 +25,13 @@ pub async fn get(
     let content = fs::read_to_string(content_path).unwrap_or_else(|_| "No content".to_string());
     Ok(layout.render(html! {
         article {
-            h2 { a href=(entry.url) { (title) } }
-            span class="published" {
-                strong { "Published: " }
-                time datetime=(published_at) data-controller="local-time" {
-                    (published_at)
+            h2 class="title" { a href=(entry.url) { (title) } }
+            div {
+                span class="published" {
+                    strong { "Published: " }
+                    time datetime=(published_at) data-controller="local-time" {
+                        (published_at)
+                    }
                 }
             }
             (PreEscaped(content))
