@@ -24,9 +24,6 @@ use crate::domain_locks::DomainLocks;
 /// This map should only contain crawls that have just been created but not yet subscribed to.
 /// Entries are only added when a user adds a feed in the UI and entries are removed by the same
 /// user once a server-sent event connection is established.
-///
-/// TODO: remove the entries in the CrawlScheduler once the crawl is complete if the user never 
-/// requested the stream to remove it themselves.
 pub type Crawls = Arc<Mutex<HashMap<Uuid, broadcast::Receiver<CrawlSchedulerHandleMessage>>>>;
 
 /// A map of unique import IDs to a channel receiver for the active `Importer` running that import.
@@ -38,9 +35,6 @@ pub type Crawls = Arc<Mutex<HashMap<Uuid, broadcast::Receiver<CrawlSchedulerHand
 /// This map should only contain imports that have just been created but not yet subscribed to.
 /// Entries are only added when a user adds uploads an OPML to import and entries are removed by 
 /// the same user once a server-sent event connection is established.
-///
-/// TODO: remove the entries in the Importer once the crawl is complete if the user never requested 
-/// the stream to remove it themselves.
 pub type Imports = Arc<Mutex<HashMap<Uuid, broadcast::Receiver<ImporterHandleMessage>>>>;
 
 #[derive(Clone)]

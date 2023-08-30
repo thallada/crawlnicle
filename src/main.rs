@@ -66,11 +66,13 @@ async fn main() -> Result<()> {
         client.clone(),
         domain_locks.clone(),
         config.content_dir.clone(),
+        crawls.clone(),
     );
     let _ = crawl_scheduler.bootstrap().await;
     let importer = ImporterHandle::new(
         pool.clone(),
         crawl_scheduler.clone(),
+        imports.clone(),
     );
 
     let addr = format!("{}:{}", &config.host, &config.port).parse()?;

@@ -20,6 +20,7 @@ use crate::actors::entry_crawler::{
 use crate::domain_locks::DomainLocks;
 use crate::models::entry::{CreateEntry, Entry};
 use crate::models::feed::{Feed, MAX_CRAWL_INTERVAL_MINUTES, MIN_CRAWL_INTERVAL_MINUTES};
+use crate::state::Crawls;
 use crate::uuid::Base62Uuid;
 
 /// The `FeedCrawler` actor fetches a feed url, parses it, and saves it to the database.
@@ -34,6 +35,7 @@ struct FeedCrawler {
     client: Client,
     domain_locks: DomainLocks,
     content_dir: String,
+    crawls: Crawls,
 }
 
 #[derive(Debug)]
@@ -78,6 +80,7 @@ impl FeedCrawler {
         client: Client,
         domain_locks: DomainLocks,
         content_dir: String,
+        crawls: Crawls,
     ) -> Self {
         FeedCrawler {
             receiver,
@@ -85,6 +88,7 @@ impl FeedCrawler {
             client,
             domain_locks,
             content_dir,
+            crawls,
         }
     }
 
@@ -281,6 +285,10 @@ impl FeedCrawler {
                 respond_to,
             } => {
                 let result = self.crawl_feed(feed_id, respond_to.clone()).await;
+                {
+                    let mut crawls = self.crawls.lock().await;
+                    crawls.remove(&feed_id);
+                }
                 if let Err(error) = &result {
                     match Feed::update_crawl_error(&self.pool, feed_id, format!("{}", error)).await
                     {
@@ -332,9 +340,11 @@ impl FeedCrawlerHandle {
         client: Client,
         domain_locks: DomainLocks,
         content_dir: String,
+        crawls: Crawls,
     ) -> Self {
         let (sender, receiver) = mpsc::channel(8);
-        let mut crawler = FeedCrawler::new(receiver, pool, client, domain_locks, content_dir);
+        let mut crawler =
+            FeedCrawler::new(receiver, pool, client, domain_locks, content_dir, crawls);
         tokio::spawn(async move { crawler.run().await });
 
         Self { sender }

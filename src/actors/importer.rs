@@ -2,8 +2,6 @@ use std::fmt::{self, Display, Formatter};
 use std::io::Cursor;
 
 use bytes::Bytes;
-use futures::stream::FuturesUnordered;
-use futures::StreamExt;
 use opml::OPML;
 use sqlx::PgPool;
 use tokio::sync::{broadcast, mpsc};
@@ -11,8 +9,8 @@ use tracing::{debug, error, instrument};
 use uuid::Uuid;
 
 use crate::actors::crawl_scheduler::{CrawlSchedulerHandle, CrawlSchedulerHandleMessage};
-use crate::actors::feed_crawler::FeedCrawlerHandleMessage;
 use crate::models::feed::{Feed, UpsertFeed};
+use crate::state::Imports;
 use crate::uuid::Base62Uuid;
 
 /// The `Importer` actor parses OPML bytes, loops through the document to find all feed URLs, then
@@ -26,12 +24,13 @@ struct Importer {
     receiver: mpsc::Receiver<ImporterMessage>,
     pool: PgPool,
     crawl_scheduler: CrawlSchedulerHandle,
+    imports: Imports,
 }
 
 #[derive(Debug)]
 enum ImporterMessage {
     Import {
-        import_id: Base62Uuid,
+        import_id: Uuid,
         file_name: Option<String>,
         bytes: Bytes,
         respond_to: broadcast::Sender<ImporterHandleMessage>,
@@ -75,24 +74,27 @@ impl Importer {
         receiver: mpsc::Receiver<ImporterMessage>,
         pool: PgPool,
         crawl_scheduler: CrawlSchedulerHandle,
+        imports: Imports,
     ) -> Self {
         Importer {
             receiver,
             pool,
             crawl_scheduler,
+            imports,
         }
     }
 
     #[instrument(skip_all, fields(import_id = %import_id, file_name = ?file_name))]
     async fn import_opml(
         &self,
-        import_id: Base62Uuid,
+        import_id: Uuid,
         file_name: Option<String>,
         bytes: Bytes,
         respond_to: broadcast::Sender<ImporterHandleMessage>,
     ) -> ImporterResult<()> {
-        let document = OPML::from_reader(&mut Cursor::new(bytes))
-            .map_err(|_| ImporterError::InvalidOPML(file_name.unwrap_or(import_id.to_string())))?;
+        let document = OPML::from_reader(&mut Cursor::new(bytes)).map_err(|_| {
+            ImporterError::InvalidOPML(file_name.unwrap_or(Base62Uuid::from(import_id).to_string()))
+        })?;
         for url in Self::gather_feed_urls(document.body.outlines) {
             let feed = Feed::upsert(
                 &self.pool,
@@ -138,6 +140,10 @@ impl Importer {
                 let result = self
                     .import_opml(import_id, file_name, bytes, respond_to.clone())
                     .await;
+                {
+                    let mut imports = self.imports.lock().await;
+                    imports.remove(&import_id);
+                }
 
                 // ignore the result since the initiator may have cancelled waiting for the
                 // response, and that is ok
@@ -171,16 +177,15 @@ pub struct ImporterHandle {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum ImporterHandleMessage {
-    // TODO: send stats of import or forward crawler messages?
     Import(ImporterResult<()>),
     CrawlScheduler(CrawlSchedulerHandleMessage),
 }
 
 impl ImporterHandle {
     /// Creates an async actor task that will listen for messages on the `sender` channel.
-    pub fn new(pool: PgPool, crawl_scheduler: CrawlSchedulerHandle) -> Self {
+    pub fn new(pool: PgPool, crawl_scheduler: CrawlSchedulerHandle, imports: Imports) -> Self {
         let (sender, receiver) = mpsc::channel(8);
-        let mut importer = Importer::new(receiver, pool, crawl_scheduler);
+        let mut importer = Importer::new(receiver, pool, crawl_scheduler, imports);
         tokio::spawn(async move { importer.run().await });
 
         Self { sender }
@@ -191,7 +196,7 @@ impl ImporterHandle {
     /// Listen to the result of the import via the returned `broadcast::Receiver`.
     pub async fn import(
         &self,
-        import_id: Base62Uuid,
+        import_id: Uuid,
         file_name: Option<String>,
         bytes: Bytes,
     ) -> broadcast::Receiver<ImporterHandleMessage> {

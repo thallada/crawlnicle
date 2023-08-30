@@ -12,6 +12,7 @@ use uuid::Uuid;
 use crate::actors::feed_crawler::{FeedCrawlerError, FeedCrawlerHandle, FeedCrawlerHandleMessage};
 use crate::domain_locks::DomainLocks;
 use crate::models::feed::{Feed, GetFeedsOptions};
+use crate::state::Crawls;
 
 struct CrawlScheduler {
     receiver: mpsc::Receiver<CrawlSchedulerMessage>,
@@ -19,6 +20,7 @@ struct CrawlScheduler {
     client: Client,
     domain_locks: DomainLocks,
     content_dir: String,
+    crawls: Crawls,
 }
 
 #[derive(Debug)]
@@ -61,6 +63,7 @@ impl CrawlScheduler {
         client: Client,
         domain_locks: DomainLocks,
         content_dir: String,
+        crawls: Crawls,
     ) -> Self {
         CrawlScheduler {
             receiver,
@@ -68,6 +71,7 @@ impl CrawlScheduler {
             client,
             domain_locks,
             content_dir,
+            crawls,
         }
     }
 
@@ -123,11 +127,7 @@ impl CrawlScheduler {
         let crawl_interval = Duration::from_secs(feed.crawl_interval_minutes as u64 * 60);
         let mut interval = tokio::time::interval(crawl_interval);
         if let Some(last_crawled_at) = feed.last_crawled_at {
-            dbg!(last_crawled_at);
-            dbg!(Utc::now());
             if let Ok(duration_since_last_crawl) = (Utc::now() - last_crawled_at).to_std() {
-                dbg!(duration_since_last_crawl);
-                dbg!(crawl_interval);
                 if duration_since_last_crawl < crawl_interval {
                     info!(
                         "last crawled at {:?}, crawling again in {:?}",
@@ -146,6 +146,7 @@ impl CrawlScheduler {
             self.client.clone(),
             self.domain_locks.clone(),
             self.content_dir.clone(),
+            self.crawls.clone(),
         );
         tokio::spawn(async move {
             loop {
@@ -247,9 +248,11 @@ impl CrawlSchedulerHandle {
         client: Client,
         domain_locks: DomainLocks,
         content_dir: String,
+        crawls: Crawls,
     ) -> Self {
         let (sender, receiver) = mpsc::channel(8);
-        let mut scheduler = CrawlScheduler::new(receiver, pool, client, domain_locks, content_dir);
+        let mut scheduler =
+            CrawlScheduler::new(receiver, pool, client, domain_locks, content_dir, crawls);
         tokio::spawn(async move { scheduler.run().await });
 
         Self { sender }

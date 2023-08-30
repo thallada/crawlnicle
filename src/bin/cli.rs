@@ -98,6 +98,7 @@ pub async fn main() -> Result<()> {
         .max_connections(env::var("DATABASE_MAX_CONNECTIONS")?.parse()?)
         .connect(&env::var("DATABASE_URL")?)
         .await?;
+    let crawls = Arc::new(Mutex::new(HashMap::new()));
 
     let cli: Cli = Cli::parse();
 
@@ -147,6 +148,7 @@ pub async fn main() -> Result<()> {
                 client.clone(),
                 domain_locks.clone(),
                 env::var("CONTENT_DIR")?,
+                crawls.clone(),
             );
             let _ = feed_crawler.crawl(id).await;
         }
