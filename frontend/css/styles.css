@@ -156,7 +156,7 @@ form.feed-form .form-grid button {
   grid-column: 3 / 4;
 }
 
-ul#add-feed-messages {
+ul.stream-messages {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -164,7 +164,7 @@ ul#add-feed-messages {
   white-space: nowrap;
 }
 
-ul#add-feed-messages li {
+ul.stream-messages li {
   overflow: hidden;
   white-space: no-wrap;
   text-overflow: ellipsis;

@@ -14,8 +14,8 @@ use crate::actors::importer::{ImporterHandle, ImporterHandleMessage};
 use crate::error::{Error, Result};
 use crate::partials::entry_link::entry_link;
 use crate::partials::feed_link::feed_link;
+use crate::partials::opml_import_form::opml_import_form;
 use crate::state::Imports;
-use crate::turbo_stream::TurboStream;
 use crate::uuid::Base62Uuid;
 
 pub async fn opml(
@@ -26,28 +26,27 @@ pub async fn opml(
     if let Some(field) = multipart.next_field().await? {
         let import_id = Base62Uuid::new();
         let file_name = field.file_name().map(|s| s.to_string());
+        dbg!(&file_name);
         let bytes = field.bytes().await?;
+        dbg!(bytes.len());
         let receiver = importer.import(import_id.as_uuid(), file_name, bytes).await;
         {
             let mut imports = imports.lock().await;
             imports.insert(import_id.as_uuid(), receiver);
         }
 
-        let import_stream = format!("/import/{}/stream", import_id);
+        let import_stream = format!("connnect:/import/{}/stream", import_id);
         return Ok((
             StatusCode::CREATED,
-            TurboStream(
-                html! {
-                    turbo-stream-source src=(import_stream) id="import-stream" {}
-                    turbo-stream action="append" target="add-feed-messages" {
-                        template {
-                            li { "Uploading file..." }
-                        }
+            html! {
+                (opml_import_form())
+                div hx-sse=(import_stream) {
+                    ul class="stream-messages" hx-sse="swap:message" hx-swap="beforeend" {
+                        li { "Uploading..."}
                     }
-                    turbo-stream action="remove" target="no-feeds";
                 }
-                .into_string(),
-            ),
+            }
+            .into_string(),
         )
             .into_response());
     }
@@ -65,14 +64,11 @@ pub async fn stream(
     .ok_or_else(|| Error::NotFound("import stream", id.as_uuid()))?;
 
     let stream = BroadcastStream::new(receiver);
-    let import_html_id = format!("import-{}", id);
     let stream = stream.map(move |msg| match msg {
         Ok(ImporterHandleMessage::Import(Ok(_))) => Ok::<Event, String>(
             Event::default().data(
                 html! {
-                    turbo-stream action="append" target="add-feed-messages" {
-                        template { li { "Importing...." } }
-                    }
+                    li { "Finished importing" }
                 }
                 .into_string(),
             ),
@@ -82,11 +78,7 @@ pub async fn stream(
         ))) => Ok::<Event, String>(
             Event::default().data(
                 html! {
-                    turbo-stream action="append" target="add-feed-messages" {
-                        template {
-                            li { "Imported: " (entry_link(entry)) }
-                        }
-                    }
+                    li { "Crawled entry: " (entry_link(entry)) }
                 }
                 .into_string(),
             ),
@@ -96,17 +88,7 @@ pub async fn stream(
         ))) => Ok::<Event, String>(
             Event::default().data(
                 html! {
-                    turbo-stream action="remove" target="import-stream" {}
-                    turbo-stream action="append" target="add-feed-messages" {
-                        template {
-                            li { "Finished import." }
-                        }
-                    }
-                    turbo-stream action="prepend" target="feeds" {
-                        template {
-                            li id=(format!("feed-{}", feed.feed_id)) { (feed_link(&feed, false)) }
-                        }
-                    }
+                    li { "Crawled feed: " (feed_link(&feed, false)) }
                 }
                 .into_string(),
             ),
@@ -116,11 +98,7 @@ pub async fn stream(
         ))) => Ok::<Event, String>(
             Event::default().data(
                 html! {
-                    turbo-stream action="append" target="add-feed-messages" {
-                        template {
-                            li { span class="error" { (error) } }
-                        }
-                    }
+                    li { span class="error" { (error) } }
                 }
                 .into_string(),
             ),
@@ -130,9 +108,27 @@ pub async fn stream(
         ))) => Ok::<Event, String>(
             Event::default().data(
                 html! {
-                    turbo-stream action="append" target="add-feed-messages" {
-                        template {
-                            li { span class="error" { (error) } }
+                    li { span class="error" { (error) } }
+                }
+                .into_string(),
+            ),
+        ),
+        Ok(ImporterHandleMessage::CrawlScheduler(CrawlSchedulerHandleMessage::Schedule(Err(
+            error,
+        )))) => Ok::<Event, String>(
+            Event::default().data(
+                html! {
+                    li { span class="error" { (error) } }
+                }
+                .into_string(),
+            ),
+        ),
+        Ok(ImporterHandleMessage::CreateFeedError(url)) => Ok::<Event, String>(
+            Event::default().data(
+                html! {
+                    li {
+                        span class="error" {
+                            "Could not create feed for url: " a href=(url) { (url) }
                         }
                     }
                 }
@@ -141,17 +137,13 @@ pub async fn stream(
         ),
         Ok(ImporterHandleMessage::Import(Err(error))) => Ok(Event::default().data(
             html! {
-                turbo-stream action="remove" target="import-stream" {}
-                turbo-stream action="append" target="add-feed-messages" {
-                    template {
-                        li { span class="error" { (error) } }
-                    }
-                }
-                turbo-stream action="replace" target=(import_html_id) {
-                    template {
-                        li id=(import_html_id) { span class="error" { (error) } }
-                    }
-                }
+                li { span class="error" { (error) } }
+            }
+            .into_string(),
+        )),
+        Ok(ImporterHandleMessage::AlreadyImported(url)) => Ok(Event::default().data(
+            html! {
+                li { "Already imported feed: " a href=(url) { (url) } }
             }
             .into_string(),
         )),

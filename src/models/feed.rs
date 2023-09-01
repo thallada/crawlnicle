@@ -71,7 +71,7 @@ pub struct Feed {
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Default, Validate)]
 pub struct CreateFeed {
     #[validate(length(max = 255))]
     pub title: Option<String>,

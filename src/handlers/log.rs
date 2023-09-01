@@ -23,8 +23,9 @@ use crate::partials::layout::Layout;
 pub async fn get(layout: Layout) -> Result<Response> {
     let mem_buf = MEM_LOG.lock().unwrap();
     Ok(layout.render(html! {
-        turbo-stream-source src="/log/stream" {}
-        pre id="log" { (PreEscaped(convert_escaped(from_utf8(mem_buf.as_slices().0).unwrap()).unwrap())) }
+        pre id="log" hx-sse="connect:/log/stream swap:message" hx-swap="beforeend" {
+            (PreEscaped(convert_escaped(from_utf8(mem_buf.as_slices().0).unwrap()).unwrap()))
+        }
     }))
 }
 
@@ -35,11 +36,7 @@ pub async fn stream(
     let log_stream = log_stream.map(|line| {
         Ok(Event::default().data(
             html! {
-                turbo-stream action="append" target="log" {
-                    template {
-                        (PreEscaped(convert_escaped(from_utf8(&line).unwrap()).unwrap()))
-                    }
-                }
+                (PreEscaped(convert_escaped(from_utf8(&line).unwrap()).unwrap()))
             }
             .into_string(),
         ))

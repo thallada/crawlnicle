@@ -29,7 +29,7 @@ pub async fn get(
             div {
                 span class="published" {
                     strong { "Published: " }
-                    time datetime=(published_at) data-controller="local-time" {
+                    time datetime=(published_at) class="local-time" {
                         (published_at)
                     }
                 }
