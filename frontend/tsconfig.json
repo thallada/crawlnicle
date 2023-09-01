@@ -14,9 +14,12 @@
     "forceConsistentCasingInFileNames": true,
     "allowJs": true,
     "noEmit": true,
+    "noImplicitAny": true,
     "types": [
        // disabled because of https://github.com/oven-sh/bun/issues/3030
        // "bun-types" // add Bun global
     ]
-  }
+  },
+  "include": ["js"],
+  "exclude": ["node_modules"]
 }
