@@ -100,7 +100,6 @@ impl Importer {
         })?;
         let mut crawls = JoinSet::new();
         for url in Self::gather_feed_urls(document.body.outlines) {
-            dbg!(&url);
             let feed = Feed::create(
                 &self.pool,
                 CreateFeed {
@@ -111,7 +110,6 @@ impl Importer {
             .await;
             if let Err(Error::Sqlx(sqlx::error::Error::Database(err))) = feed {
                 if err.is_unique_violation() {
-                    dbg!("already imported", &url);
                     let _ = respond_to.send(ImporterHandleMessage::AlreadyImported(url));
                 }
             } else if let Ok(feed) = feed {
@@ -125,10 +123,7 @@ impl Importer {
             }
         }
 
-        while let Some(feed_id) = crawls.join_next().await {
-            dbg!("done crawling feed", feed_id);
-        }
-        dbg!("done import_opml");
+        while crawls.join_next().await.is_some() {}
 
         Ok(())
     }
@@ -153,7 +148,6 @@ impl Importer {
                 bytes,
                 respond_to,
             } => {
-                dbg!("handle_message", import_id);
                 let result = self
                     .import_opml(import_id, file_name, bytes, respond_to.clone())
                     .await;
@@ -219,7 +213,6 @@ impl ImporterHandle {
         file_name: Option<String>,
         bytes: Bytes,
     ) -> broadcast::Receiver<ImporterHandleMessage> {
-        dbg!(import_id, &file_name, bytes.len());
         let (sender, receiver) = broadcast::channel(8);
         let msg = ImporterMessage::Import {
             import_id,

@@ -26,9 +26,7 @@ pub async fn opml(
     if let Some(field) = multipart.next_field().await? {
         let import_id = Base62Uuid::new();
         let file_name = field.file_name().map(|s| s.to_string());
-        dbg!(&file_name);
         let bytes = field.bytes().await?;
-        dbg!(bytes.len());
         let receiver = importer.import(import_id.as_uuid(), file_name, bytes).await;
         {
             let mut imports = imports.lock().await;

@@ -94,9 +94,6 @@ impl Layout {
                 head {
                     meta charset="utf-8";
                     title { (self.title) }
-                    // TODO: vendor this before going to prod
-                    script src="https://unpkg.com/htmx.org@1.9.5" integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO" crossorigin="anonymous" {}
-                    script src="https://unpkg.com/htmx.org/dist/ext/sse.js" {}
                     @for js_bundle in js_bundles() {
                         script type="module" src=(js_bundle) {}
                     }
