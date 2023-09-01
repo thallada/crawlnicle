@@ -19,6 +19,7 @@ Install these requirements to get started developing crawlnicle.
    ```
 
 * [just](https://github.com/casey/just#installation)
+* [bun](https://bun.sh)
 * (optional) [cargo-watch](https://github.com/watchexec/cargo-watch#install) for
 auto-recompiling the server in development
 * (optional) [mold](https://github.com/rui314/mold#installation) for faster
