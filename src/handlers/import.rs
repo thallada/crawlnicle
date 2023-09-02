@@ -76,7 +76,7 @@ pub async fn stream(
         ))) => Ok::<Event, String>(
             Event::default().data(
                 html! {
-                    li { "Crawled entry: " (entry_link(entry)) }
+                    li { "Crawled entry: " (entry_link(&entry)) }
                 }
                 .into_string(),
             ),

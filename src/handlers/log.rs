@@ -22,7 +22,7 @@ use crate::partials::layout::Layout;
 
 pub async fn get(layout: Layout) -> Result<Response> {
     let mem_buf = MEM_LOG.lock().unwrap();
-    Ok(layout.render(html! {
+    Ok(layout.with_subtitle("log").render(html! {
         pre id="log" hx-sse="connect:/log/stream swap:message" hx-swap="beforeend" {
             (PreEscaped(convert_escaped(from_utf8(mem_buf.as_slices().0).unwrap()).unwrap()))
         }

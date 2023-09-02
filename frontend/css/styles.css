@@ -6,6 +6,27 @@ html {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
+.htmx-indicator {
+  display: none;
+}
+
+.htmx-request .list-loading {
+  display: block;
+}
+
+.htmx-request.list-loading {
+  display: block;
+}
+
+.list-loading {
+  margin: 24px auto;
+}
+
+img.loading {
+  filter: invert(100%);
+  max-width: 64px;
+}
+
 /* Header */
 
 header.header nav {

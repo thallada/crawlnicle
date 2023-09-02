@@ -6,7 +6,10 @@ use lib::actors::feed_crawler::FeedCrawlerHandle;
 use lib::domain_locks::DomainLocks;
 use reqwest::Client;
 use sqlx::postgres::PgPoolOptions;
+use std::collections::HashMap;
 use std::env;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tracing::info;
 use uuid::Uuid;
 

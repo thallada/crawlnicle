@@ -14,10 +14,12 @@ use maud::{html, Markup, DOCTYPE};
 use crate::partials::header::header;
 use crate::{config::Config, partials::footer::footer};
 #[cfg(not(debug_assertions))]
-use crate::{CSS_BUNDLES, JS_BUNDLES};
+use crate::{CSS_MANIFEST, JS_MANIFEST};
 
+#[derive(Debug, Default)]
 pub struct Layout {
     pub title: String,
+    pub subtitle: Option<String>,
 }
 
 #[async_trait]
@@ -34,6 +36,7 @@ where
             .map_err(|err| err.into_response())?;
         Ok(Self {
             title: config.title,
+            ..Default::default()
         })
     }
 }
@@ -44,7 +47,7 @@ where
 // In release mode, this work is done ahead of time in build.rs and saved to static/js/manifest.txt
 // and static/css/manifest.txt. The contents of those files are then compiled into the server
 // binary so that rendering the Layout does not need to do any filesystem operations.
-fn get_bundles(asset_type: &str) -> Vec<String> {
+fn get_manifest(asset_type: &str) -> Vec<String> {
     let root_dir = Path::new("./");
     let dir = root_dir.join(format!("static/{}", asset_type));
 
@@ -68,38 +71,56 @@ fn get_bundles(asset_type: &str) -> Vec<String> {
 }
 
 #[cfg(debug_assertions)]
-fn js_bundles() -> Vec<String> {
-    get_bundles("js")
+fn js_manifest() -> Vec<String> {
+    get_manifest("js")
 }
 
 #[cfg(not(debug_assertions))]
-fn js_bundles() -> Lines<'static> {
-    JS_BUNDLES.lines()
+fn js_manifest() -> Lines<'static> {
+    JS_MANIFEST.lines()
 }
 
 #[cfg(debug_assertions)]
-fn css_bundles() -> Vec<String> {
-    get_bundles("css")
+fn css_manifest() -> Vec<String> {
+    get_manifest("css")
 }
 
 #[cfg(not(debug_assertions))]
-fn css_bundles() -> Lines<'static> {
-    CSS_BUNDLES.lines()
+fn css_manifest() -> Lines<'static> {
+    CSS_MANIFEST.lines()
 }
 
 impl Layout {
+    pub fn with_title(mut self, title: &str) -> Self {
+        self.title = title.to_string();
+        self
+    }
+
+    pub fn with_subtitle(mut self, subtitle: &str) -> Self {
+        self.subtitle = Some(subtitle.to_string());
+        self
+    }
+
+    fn full_title(&self) -> String {
+        if let Some(subtitle) = &self.subtitle {
+            format!("{} - {}", self.title, subtitle)
+        } else {
+            self.title.to_string()
+        }
+    }
+
     pub fn render(self, template: Markup) -> Response {
         let with_layout = html! {
             (DOCTYPE)
             html lang="en" {
                 head {
                     meta charset="utf-8";
-                    title { (self.title) }
-                    @for js_bundle in js_bundles() {
-                        script type="module" src=(js_bundle) {}
+                    title { (self.full_title()) }
+                    @for js_file in js_manifest() {
+                        script type="module" src=(js_file) {}
                     }
-                    @for css_bundle in css_bundles() {
-                        link rel="stylesheet" href=(css_bundle) {}
+                    @for css_file in css_manifest() {
+                        link rel="stylesheet" href=(css_file) {}
                     }
                 }
                 body hx-booster="true" {

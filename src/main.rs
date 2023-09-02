@@ -89,6 +89,7 @@ async fn main() -> Result<()> {
         .route("/feed/:id", get(handlers::feed::get))
         .route("/feed/:id/stream", get(handlers::feed::stream))
         .route("/feed/:id/delete", post(handlers::feed::delete))
+        .route("/entries", get(handlers::entries::get))
         .route("/entry/:id", get(handlers::entry::get))
         .route("/log", get(handlers::log::get))
         .route("/log/stream", get(handlers::log::stream))

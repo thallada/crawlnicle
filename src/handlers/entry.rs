@@ -20,10 +20,12 @@ pub async fn get(
     let entry = Entry::get(&pool, id.as_uuid()).await?;
     let content_dir = std::path::Path::new(&config.content_dir);
     let content_path = content_dir.join(format!("{}.html", entry.entry_id));
-    let title = entry.title.unwrap_or_else(|| "Untitled".to_string());
-    let published_at = entry.published_at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let title = entry.title.unwrap_or_else(|| "Untitled Entry".to_string());
+    let published_at = entry
+        .published_at
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
     let content = fs::read_to_string(content_path).unwrap_or_else(|_| "No content".to_string());
-    Ok(layout.render(html! {
+    Ok(layout.with_subtitle(&title).render(html! {
         article {
             h2 class="title" { a href=(entry.url) { (title) } }
             div {

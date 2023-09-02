@@ -109,7 +109,7 @@ pub struct UpdateFeed {
     pub last_entry_published_at: Option<Option<DateTime<Utc>>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum GetFeedsSort {
     Title,
     CreatedAt,
@@ -117,11 +117,12 @@ pub enum GetFeedsSort {
     LastEntryPublishedAt,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Deserialize)]
 pub struct GetFeedsOptions {
     pub sort: Option<GetFeedsSort>,
     pub before: Option<DateTime<Utc>>,
     pub after_title: Option<String>,
+    pub before_id: Option<Uuid>,
     pub limit: Option<i64>,
 }
 
@@ -159,11 +160,11 @@ impl Feed {
         })
     }
 
-    pub async fn get_all(pool: &PgPool, options: GetFeedsOptions) -> sqlx::Result<Vec<Feed>> {
+    pub async fn get_all(pool: &PgPool, options: &GetFeedsOptions) -> sqlx::Result<Vec<Feed>> {
         // TODO: make sure there are indices for all of these sort options
-        match options.sort.unwrap_or(GetFeedsSort::CreatedAt) {
+        match options.sort.as_ref().unwrap_or(&GetFeedsSort::CreatedAt) {
             GetFeedsSort::Title => {
-                if let Some(after_title) = options.after_title {
+                if let Some(after_title) = &options.after_title {
                     sqlx::query_as!(
                         Feed,
                         r#"select
@@ -183,11 +184,12 @@ impl Feed {
                             deleted_at
                         from feed
                         where deleted_at is null
-                        and title > $1
-                        order by title asc
-                        limit $2
+                        and (title, feed_id) > ($1, $2)
+                        order by title asc, feed_id asc
+                        limit $3
                         "#,
                         after_title,
+                        options.before_id.unwrap_or(Uuid::nil()),
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
                     .fetch_all(pool)
@@ -212,7 +214,7 @@ impl Feed {
                             deleted_at
                         from feed
                         where deleted_at is null
-                        order by title asc
+                        order by title asc, feed_id asc
                         limit $1
                         "#,
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
@@ -243,11 +245,12 @@ impl Feed {
                             deleted_at
                         from feed
                         where deleted_at is null
-                        and created_at < $1
-                        order by created_at desc
-                        limit $2
+                        and (created_at, feed_id) < ($1, $2)
+                        order by created_at desc, feed_id desc
+                        limit $3
                         "#,
                         created_before,
+                        options.before_id.unwrap_or(Uuid::nil()),
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
                     .fetch_all(pool)
@@ -272,7 +275,7 @@ impl Feed {
                             deleted_at
                         from feed
                         where deleted_at is null
-                        order by created_at desc
+                        order by created_at desc, feed_id desc
                         limit $1
                         "#,
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
@@ -303,11 +306,12 @@ impl Feed {
                             deleted_at
                         from feed
                         where deleted_at is null
-                        and last_crawled_at < $1
-                        order by last_crawled_at desc
-                        limit $2
+                        and (last_crawled_at, feed_id) < ($1, $2)
+                        order by last_crawled_at desc, feed_id desc
+                        limit $3
                         "#,
                         crawled_before,
+                        options.before_id.unwrap_or(Uuid::nil()),
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
                     .fetch_all(pool)
@@ -332,7 +336,7 @@ impl Feed {
                             deleted_at
                         from feed
                         where deleted_at is null
-                        order by last_crawled_at desc
+                        order by last_crawled_at desc, feed_id desc
                         limit $1
                         "#,
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
@@ -363,11 +367,12 @@ impl Feed {
                             deleted_at
                         from feed
                         where deleted_at is null
-                        and last_entry_published_at < $1
-                        order by last_entry_published_at desc
-                        limit $2
+                        and (last_entry_published_at, feed_id) < ($1, $2)
+                        order by last_entry_published_at desc, feed_id desc
+                        limit $3
                         "#,
                         published_before,
+                        options.before_id.unwrap_or(Uuid::nil()),
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
                     .fetch_all(pool)
@@ -392,7 +397,7 @@ impl Feed {
                             deleted_at
                         from feed
                         where deleted_at is null
-                        order by last_entry_published_at desc
+                        order by last_entry_published_at desc, feed_id desc
                         limit $1
                         "#,
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),

@@ -6,7 +6,7 @@ use validator::{Validate, ValidationErrors};
 
 use crate::error::{Error, Result};
 
-const DEFAULT_ENTRIES_PAGE_SIZE: i64 = 50;
+pub const DEFAULT_ENTRIES_PAGE_SIZE: i64 = 50;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entry {
@@ -35,9 +35,11 @@ pub struct CreateEntry {
     pub published_at: DateTime<Utc>,
 }
 
-#[derive(Default)]
+#[derive(Default, Deserialize)]
 pub struct GetEntriesOptions {
+    pub feed_id: Option<Uuid>,
     pub published_before: Option<DateTime<Utc>>,
+    pub id_before: Option<Uuid>,
     pub limit: Option<i64>,
 }
 
@@ -54,71 +56,103 @@ impl Entry {
             })
     }
 
-    pub async fn get_all(pool: &PgPool, options: GetEntriesOptions) -> sqlx::Result<Vec<Entry>> {
-        if let Some(published_before) = options.published_before {
-            sqlx::query_as!(
-                Entry,
-                "select * from entry
-                    where deleted_at is null
-                    and published_at < $1
-                    order by published_at desc
-                    limit $2
-                ",
-                published_before,
-                options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
-            )
-            .fetch_all(pool)
-            .await
+    pub async fn get_all(pool: &PgPool, options: &GetEntriesOptions) -> sqlx::Result<Vec<Entry>> {
+        if let Some(feed_id) = options.feed_id {
+            if let Some(published_before) = options.published_before {
+                if let Some(id_before) = options.id_before {
+                    sqlx::query_as!(
+                        Entry,
+                        "select * from entry
+                            where deleted_at is null
+                            and feed_id = $1
+                            and (published_at, entry_id) < ($2, $3)
+                            order by published_at desc, entry_id desc
+                            limit $4
+                        ",
+                        feed_id,
+                        published_before,
+                        id_before,
+                        options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+                    )
+                    .fetch_all(pool)
+                    .await
+                } else {
+                    sqlx::query_as!(
+                        Entry,
+                        "select * from entry
+                            where deleted_at is null
+                            and feed_id = $1
+                            and published_at < $2
+                            order by published_at desc
+                            limit $3
+                        ",
+                        feed_id,
+                        published_before,
+                        options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+                    )
+                    .fetch_all(pool)
+                    .await
+                }
+            } else {
+                sqlx::query_as!(
+                    Entry,
+                    "select * from entry
+                        where deleted_at is null
+                        and feed_id = $1
+                        order by published_at desc
+                        limit $2
+                    ",
+                    feed_id,
+                    options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+                )
+                .fetch_all(pool)
+                .await
+            }
         } else {
-            sqlx::query_as!(
-                Entry,
-                "select * from entry
-                    where deleted_at is null
-                    order by published_at desc
-                    limit $1
-                ",
-                options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
-            )
-            .fetch_all(pool)
-            .await
-        }
-    }
-
-    pub async fn get_all_for_feed(
-        pool: &PgPool,
-        feed_id: Uuid,
-        options: GetEntriesOptions,
-    ) -> sqlx::Result<Vec<Entry>> {
-        if let Some(published_before) = options.published_before {
-            sqlx::query_as!(
-                Entry,
-                "select * from entry
-                    where deleted_at is null
-                    and feed_id = $1
-                    and published_at < $2
-                    order by published_at desc
-                    limit $3
-                ",
-                feed_id,
-                published_before,
-                options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
-            )
-            .fetch_all(pool)
-            .await
-        } else {
-            sqlx::query_as!(
-                Entry,
-                "select * from entry
-                    where deleted_at is null
-                    and feed_id = $1
-                    order by published_at desc
-                    limit $2
-                ",
-                feed_id,
-                options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
-            )
-            .fetch_all(pool)
-            .await
+            if let Some(published_before) = options.published_before {
+                if let Some(id_before) = options.id_before {
+                    sqlx::query_as!(
+                        Entry,
+                        "select * from entry
+                            where deleted_at is null
+                            and (published_at, entry_id) < ($1, $2)
+                            order by published_at desc, entry_id desc
+                            limit $3
+                        ",
+                        published_before,
+                        id_before,
+                        options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+                    )
+                    .fetch_all(pool)
+                    .await
+                } else {
+                    sqlx::query_as!(
+                        Entry,
+                        "select * from entry
+                            where deleted_at is null
+                            and published_at < $1
+                            order by published_at desc
+                            limit $2
+                        ",
+                        published_before,
+                        options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+                    )
+                    .fetch_all(pool)
+                    .await
+                }
+            } else {
+                sqlx::query_as!(
+                    Entry,
+                    "select * from entry
+                        where deleted_at is null
+                        order by published_at desc
+                        limit $1
+                    ",
+                    options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+                )
+                .fetch_all(pool)
+                .await
+            }
         }
     }
 

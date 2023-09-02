@@ -84,7 +84,7 @@ impl CrawlScheduler {
         let mut options = GetFeedsOptions::default();
         loop {
             info!("fetching feeds before: {:?}", options.before);
-            let feeds = match Feed::get_all(&self.pool, options.clone()).await {
+            let feeds = match Feed::get_all(&self.pool, &options).await {
                 Err(err) => {
                     return Err(CrawlSchedulerError::FetchFeedsError(err.to_string()));
                 }

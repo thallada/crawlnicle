@@ -7,15 +7,18 @@ install-frontend:
   bun install --cwd frontend
 
 clean-frontend:
-  rm -rf ./static/js/* ./static/css/*
+  rm -rf ./static/js/* ./static/css/* ./static/img/*
 
 build-frontend: clean-frontend
   bun build frontend/js/index.ts \
     --outdir ./static \
     --root ./frontend \
     --entry-naming [dir]/[name]-[hash].[ext] \
+    --chunk-naming [dir]/[name]-[hash].[ext] \
     --asset-naming [dir]/[name]-[hash].[ext] \
     --minify
+  mkdir -p static/img
+  cp frontend/img/* static/img/
   touch ./static/js/manifest.txt # create empty manifest to be overwritten by build.rs
   touch ./static/css/manifest.txt # create empty manifest to be overwritten by build.rs
   touch .frontend-built # trigger build.rs to run
@@ -25,7 +28,10 @@ build-dev-frontend: clean-frontend
     --outdir ./static \
     --root ./frontend \
     --entry-naming [dir]/[name]-[hash].[ext] \
+    --chunk-naming [dir]/[name]-[hash].[ext] \
     --asset-naming [dir]/[name]-[hash].[ext]
+  mkdir -p static/img
+  cp frontend/img/* static/img/
   touch ./static/js/manifest.txt # create empty manifest needed so binary compiles
   touch ./static/css/manifest.txt # create empty manifest needed so binary compiles
   # in development mode, frontend changes do not trigger a rebuild of the backend

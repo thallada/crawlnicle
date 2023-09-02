@@ -3,5 +3,6 @@
 .env
 /static/js/*
 /static/css/*
+/static/img/*
 .frontend-built
 /content

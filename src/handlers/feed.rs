@@ -16,7 +16,7 @@ use tokio_stream::StreamExt;
 use crate::actors::crawl_scheduler::{CrawlSchedulerHandle, CrawlSchedulerHandleMessage};
 use crate::actors::feed_crawler::FeedCrawlerHandleMessage;
 use crate::error::{Error, Result};
-use crate::models::entry::Entry;
+use crate::models::entry::{Entry, GetEntriesOptions};
 use crate::models::feed::{CreateFeed, Feed};
 use crate::partials::add_feed_form::add_feed_form;
 use crate::partials::entry_link::entry_link;
@@ -30,11 +30,16 @@ pub async fn get(
     layout: Layout,
 ) -> Result<Response> {
     let feed = Feed::get(&pool, id.as_uuid()).await?;
-    let entries = Entry::get_all_for_feed(&pool, feed.feed_id, Default::default()).await?;
+    let options = GetEntriesOptions {
+        feed_id: Some(feed.feed_id),
+        ..Default::default()
+    };
+    let title = feed.title.unwrap_or_else(|| "Untitled Feed".to_string());
+    let entries = Entry::get_all(&pool, &options).await?;
     let delete_url = format!("/feed/{}/delete", id);
-    Ok(layout.render(html! {
+    Ok(layout.with_subtitle(&title).render(html! {
         header class="feed-header" {
-            h2 { (feed.title.unwrap_or_else(|| "Untitled Feed".to_string())) }
+            h2 { (title) }
             button class="edit-feed" { "✏️ Edit feed" }
             form action=(delete_url) method="post" {
                 button type="submit" class="remove-feed" data-controller="remove-feed" { "❌ Remove feed" }
@@ -43,7 +48,7 @@ pub async fn get(
         @if let Some(description) = feed.description {
             p { (description) }
         }
-        (entry_list(entries))
+        (entry_list(entries, &options))
     }))
 }
 
@@ -178,7 +183,7 @@ pub async fn stream(
             entry,
         )))) => Ok(Event::default().data(
             html! {
-                li { "Crawled entry: " (entry_link(entry)) }
+                li { "Crawled entry: " (entry_link(&entry)) }
             }
             .into_string(),
         )),
