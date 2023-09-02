@@ -1,5 +1,5 @@
-use std::path::Path;
 use std::fs;
+use std::path::Path;
 #[cfg(not(debug_assertions))]
 use std::str::Lines;
 
@@ -11,10 +11,10 @@ use axum::{
 };
 use maud::{html, Markup, DOCTYPE};
 
-#[cfg(not(debug_assertions))]
-use crate::{JS_BUNDLES, CSS_BUNDLES};
-use crate::config::Config;
 use crate::partials::header::header;
+use crate::{config::Config, partials::footer::footer};
+#[cfg(not(debug_assertions))]
+use crate::{CSS_BUNDLES, JS_BUNDLES};
 
 pub struct Layout {
     pub title: String,
@@ -38,11 +38,11 @@ where
     }
 }
 
-// In development, the JS and CSS file names are retrieved at runtime during Layout::render so that 
+// In development, the JS and CSS file names are retrieved at runtime during Layout::render so that
 // the server binary does not need to be rebuilt when frontend files are changed.
 //
-// In release mode, this work is done ahead of time in build.rs and saved to static/js/manifest.txt 
-// and static/css/manifest.txt. The contents of those files are then compiled into the server 
+// In release mode, this work is done ahead of time in build.rs and saved to static/js/manifest.txt
+// and static/css/manifest.txt. The contents of those files are then compiled into the server
 // binary so that rendering the Layout does not need to do any filesystem operations.
 fn get_bundles(asset_type: &str) -> Vec<String> {
     let root_dir = Path::new("./");
@@ -63,7 +63,8 @@ fn get_bundles(asset_type: &str) -> Vec<String> {
                 .join(entry.path().strip_prefix(root_dir).unwrap())
                 .display()
                 .to_string()
-        }).collect()
+        })
+        .collect()
 }
 
 #[cfg(debug_assertions)]
@@ -104,6 +105,7 @@ impl Layout {
                 body hx-booster="true" {
                     (header(&self.title))
                     (template)
+                    (footer())
                 }
             }
         }

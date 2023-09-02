@@ -34,6 +34,19 @@ header.header nav ul li {
   margin-left: 16px;
 }
 
+/* Footer */
+
+footer.footer {
+  text-align: center;
+  margin-top: 64px;
+  margin-bottom: 16px;
+}
+
+footer.footer hr {
+  width: 64px;
+  margin-bottom: 16px;
+}
+
 /* Home */
 
 ul.entries {

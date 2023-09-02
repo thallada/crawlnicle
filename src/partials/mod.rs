@@ -3,6 +3,7 @@ pub mod entry_link;
 pub mod entry_list;
 pub mod feed_link;
 pub mod feed_list;
+pub mod footer;
 pub mod header;
 pub mod layout;
 pub mod opml_import_form;
