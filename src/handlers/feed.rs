@@ -164,7 +164,7 @@ pub async fn stream(
         let mut crawls = crawls.lock().await;
         crawls.remove(&id.as_uuid())
     }
-    .ok_or_else(|| Error::NotFound("feed stream", id.as_uuid()))?;
+    .ok_or_else(|| Error::NotFoundUuid("feed stream", id.as_uuid()))?;
 
     let stream = BroadcastStream::new(receiver);
     let feed_id = format!("feed-{}", id);

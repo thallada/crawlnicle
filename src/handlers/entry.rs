@@ -27,7 +27,9 @@ pub async fn get(
     let content = fs::read_to_string(content_path).unwrap_or_else(|_| "No content".to_string());
     Ok(layout.with_subtitle(&title).render(html! {
         article {
-            h2 class="title" { a href=(entry.url) { (title) } }
+            header {
+                h2 class="title" { a href=(entry.url) { (title) } }
+            }
             div {
                 span class="published" {
                     strong { "Published: " }

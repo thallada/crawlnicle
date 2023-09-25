@@ -14,7 +14,7 @@ pub async fn get(State(pool): State<PgPool>, layout: Layout) -> Result<Response>
     let options = GetFeedsOptions::default();
     let feeds = Feed::get_all(&pool, &options).await?;
     Ok(layout.with_subtitle("feeds").render(html! {
-        h2 { "Feeds" }
+        header { h2 { "Feeds" } }
         div class="feeds" {
             ul id="feeds" {
                 (feed_list(feeds, &options))

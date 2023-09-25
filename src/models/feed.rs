@@ -154,7 +154,7 @@ impl Feed {
         .await
         .map_err(|error| {
             if let sqlx::error::Error::RowNotFound = error {
-                return Error::NotFound("feed", feed_id);
+                return Error::NotFoundUuid("feed", feed_id);
             }
             Error::Sqlx(error)
         })

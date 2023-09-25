@@ -55,6 +55,10 @@ header.header nav ul li {
   margin-left: 16px;
 }
 
+header.header nav .auth {
+  margin-left: auto;
+}
+
 /* Footer */
 
 footer.footer {
@@ -187,7 +191,7 @@ form.feed-form .form-grid textarea {
 form.feed-form .form-grid button {
   font-size: 14px;
   padding: 4px 8px;
-  grid-column: 3 / 4;
+  grid-column: 3 / 3;
 }
 
 ul.stream-messages {
@@ -216,4 +220,39 @@ header.feed-header button {
   font-size: 14px;
   padding: 4px 8px;
   margin-left: 24px;
+}
+
+/* Signup & Login */
+
+.auth-form-grid {
+  display: grid;
+  grid-template-columns: fit-content(100%) minmax(100px, 400px);
+  grid-gap: 16px;
+  width: 100%;
+  margin: 16px;
+  margin-bottom: 32px;
+}
+
+.auth-form-grid label {
+  font-size: 16px;
+  font-weight: bold;
+  grid-column: 1;
+  text-align: right;
+}
+
+.auth-form-grid input {
+  font-size: 16px;
+  grid-column: 2;
+}
+
+.auth-form-grid button {
+  font-size: 14px;
+  padding: 4px 8px;
+  grid-column: 2;
+  margin-left: auto;
+}
+
+.auth-form-grid span.error {
+  font-size: 16px;
+  grid-column: 2 / 3;
 }

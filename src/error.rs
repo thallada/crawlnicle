@@ -34,13 +34,22 @@ pub enum Error {
     NoFile,
 
     #[error("{0}: {1} not found")]
-    NotFound(&'static str, Uuid),
+    NotFoundUuid(&'static str, Uuid),
+
+    #[error("{0}: {1} not found")]
+    NotFoundString(&'static str, String),
 
     #[error("referenced {0} not found")]
     RelationNotFound(&'static str),
 
     #[error("an internal server error occurred")]
     InternalServerError,
+
+    #[error("unauthorized")]
+    Unauthorized,
+
+    #[error("bad request: {0}")]
+    BadRequest(&'static str)
 }
 
 pub type Result<T, E = Error> = ::std::result::Result<T, E>;
@@ -81,7 +90,9 @@ impl Error {
         use Error::*;
 
         match self {
-            NotFound(_, _) => StatusCode::NOT_FOUND,
+            NotFoundUuid(_, _) | NotFoundString(_, _) => StatusCode::NOT_FOUND,
+            Unauthorized => StatusCode::UNAUTHORIZED,
+            BadRequest(_) => StatusCode::BAD_REQUEST,
             InternalServerError | Sqlx(_) | Anyhow(_) | Reqwest(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }

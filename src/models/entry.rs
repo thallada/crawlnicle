@@ -50,7 +50,7 @@ impl Entry {
             .await
             .map_err(|error| {
                 if let sqlx::error::Error::RowNotFound = error {
-                    return Error::NotFound("entry", entry_id);
+                    return Error::NotFoundUuid("entry", entry_id);
                 }
                 Error::Sqlx(error)
             })

@@ -59,7 +59,7 @@ pub async fn stream(
         let mut imports = imports.lock().await;
         imports.remove(&id.as_uuid())
     }
-    .ok_or_else(|| Error::NotFound("import stream", id.as_uuid()))?;
+    .ok_or_else(|| Error::NotFoundUuid("import stream", id.as_uuid()))?;
 
     let stream = BroadcastStream::new(receiver);
     let stream = stream.map(move |msg| match msg {

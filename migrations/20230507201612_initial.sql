@@ -68,3 +68,15 @@ create table if not exists "entry" (
 create index on "entry" (published_at desc) where deleted_at is null;
 create unique index on "entry" (url, feed_id);
 select trigger_updated_at('"entry"');
+
+create table if not exists "users" (
+    user_id uuid primary key default uuid_generate_v1mc(),
+    password_hash text not null,
+    email text not null collate case_insensitive,
+    name text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz,
+    deleted_at timestamptz
+);
+create unique index on "users" (email);
+select trigger_updated_at('"users"');

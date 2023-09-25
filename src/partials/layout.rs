@@ -9,10 +9,14 @@ use axum::{
     http::request::Parts,
     response::{Html, IntoResponse, Response},
 };
+use axum_login::{extractors::AuthContext, SqlxStore};
 use maud::{html, Markup, DOCTYPE};
+use sqlx::PgPool;
+use uuid::Uuid;
 
 use crate::partials::header::header;
 use crate::{config::Config, partials::footer::footer};
+use crate::models::user::User;
 #[cfg(not(debug_assertions))]
 use crate::{CSS_MANIFEST, JS_MANIFEST};
 
@@ -20,6 +24,7 @@ use crate::{CSS_MANIFEST, JS_MANIFEST};
 pub struct Layout {
     pub title: String,
     pub subtitle: Option<String>,
+    pub user: Option<User>,
 }
 
 #[async_trait]
@@ -34,8 +39,12 @@ where
         let State(config) = State::<Config>::from_request_parts(parts, state)
             .await
             .map_err(|err| err.into_response())?;
+        let auth_context = AuthContext::<Uuid, User, SqlxStore<PgPool, User>>::from_request_parts(parts, state)
+            .await
+            .map_err(|err| err.into_response())?;
         Ok(Self {
             title: config.title,
+            user: auth_context.current_user,
             ..Default::default()
         })
     }
@@ -101,6 +110,11 @@ impl Layout {
         self
     }
 
+    pub fn with_user(mut self, user: User) -> Self {
+        self.user = Some(user);
+        self
+    }
+
     fn full_title(&self) -> String {
         if let Some(subtitle) = &self.subtitle {
             format!("{} - {}", self.title, subtitle)
@@ -124,7 +138,7 @@ impl Layout {
                     }
                 }
                 body hx-booster="true" {
-                    (header(&self.title))
+                    (header(&self.title, self.user))
                     (template)
                     (footer())
                 }

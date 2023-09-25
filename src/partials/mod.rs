@@ -6,4 +6,7 @@ pub mod feed_list;
 pub mod footer;
 pub mod header;
 pub mod layout;
+pub mod login_form;
 pub mod opml_import_form;
+pub mod signup_form;
+pub mod user_name;
