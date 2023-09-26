@@ -1,4 +1,4 @@
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::response::{IntoResponse, Response};
 use axum::{extract::State, Form};
 use maud::html;
 use serde::Deserialize;
@@ -6,6 +6,7 @@ use serde_with::{serde_as, NoneAsEmptyString};
 use sqlx::PgPool;
 
 use crate::error::{Error, Result};
+use crate::htmx::HXRedirect;
 use crate::models::user::{AuthContext, CreateUser, User};
 use crate::partials::layout::Layout;
 use crate::partials::signup_form::{signup_form, SignupFormProps};
@@ -107,5 +108,5 @@ pub async fn post(
     auth.login(&user)
         .await
         .map_err(|_| Error::InternalServerError)?;
-    Ok(Redirect::to("/").into_response())
+    Ok(HXRedirect::to("/").into_response())
 }

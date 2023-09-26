@@ -6,6 +6,7 @@ pub mod domain_locks;
 pub mod error;
 pub mod handlers;
 pub mod headers;
+pub mod htmx;
 pub mod log;
 pub mod models;
 pub mod partials;

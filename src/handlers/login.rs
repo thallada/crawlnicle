@@ -1,4 +1,4 @@
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::response::{IntoResponse, Response};
 use axum::{extract::State, Form};
 use maud::html;
 use serde::Deserialize;
@@ -7,6 +7,7 @@ use sqlx::PgPool;
 
 use crate::auth::verify_password;
 use crate::error::{Error, Result};
+use crate::htmx::HXRedirect;
 use crate::partials::login_form::{login_form, LoginFormProps};
 use crate::{
     models::user::{AuthContext, User},
@@ -65,5 +66,5 @@ pub async fn post(
     auth.login(&user)
         .await
         .map_err(|_| Error::InternalServerError)?;
-    Ok(Redirect::to("/").into_response())
+    Ok(HXRedirect::to("/").into_response())
 }
