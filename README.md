@@ -11,6 +11,7 @@ Install these requirements to get started developing crawlnicle.
 
 * [rust](https://www.rust-lang.org/)
 * [postgres](https://www.postgresql.org/)
+* [redis](https://redis.io/)
 * [sqlx-cli](https://crates.io/crates/sqlx-cli)
   * Only postgres needed. Install with:
 
@@ -54,6 +55,7 @@ builds
    PORT=3000
    DATABASE_URL=postgresql://crawlnicle:<password>@localhost/crawlnicle
    DATABASE_MAX_CONNECTIONS=5
+   REDIS_URL=redis://localhost
    TITLE=crawlnicle
    MAX_MEM_LOG_SIZE=1000000
    CONTENT_DIR=./content

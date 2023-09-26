@@ -7,6 +7,8 @@ pub struct Config {
     #[clap(long, env)]
     pub database_max_connections: u32,
     #[clap(long, env)]
+    pub redis_url: String,
+    #[clap(long, env)]
     pub host: String,
     #[clap(long, env)]
     pub port: u16,

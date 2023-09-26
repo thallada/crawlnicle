@@ -1,13 +1,14 @@
 use std::{collections::HashMap, net::SocketAddr, path::Path, sync::Arc};
 
 use anyhow::Result;
+use async_redis_session::RedisSessionStore;
 use axum::{
     response::IntoResponse,
     routing::{get, post},
     Extension, Router,
 };
 use axum_login::{
-    axum_sessions::{async_session::MemoryStore, SessionLayer},
+    axum_sessions::SessionLayer,
     AuthLayer, PostgresStore, RequireAuthorizationLayer,
 };
 use bytes::Bytes;
@@ -71,8 +72,7 @@ async fn main() -> Result<()> {
         .connect(&config.database_url)
         .await?;
 
-    // TODO: store sessions in postgres eventually
-    let session_store = MemoryStore::new();
+    let session_store = RedisSessionStore::new(config.redis_url.clone())?;
     let session_layer = SessionLayer::new(session_store, &secret).with_secure(false);
     let user_store = PostgresStore::<User>::new(pool.clone())
         .with_query("select * from users where user_id = $1");
