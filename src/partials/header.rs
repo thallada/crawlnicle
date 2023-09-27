@@ -20,7 +20,7 @@ pub fn header(title: &str, user: Option<User>) -> Markup {
                     } @else {
                         a href="/login" { "login" }
                         span { " | " }
-                        a href="/signup" { "signup" }
+                        a href="/register" { "register" }
                     }
                 }
             }

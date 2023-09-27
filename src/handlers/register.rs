@@ -10,11 +10,11 @@ use crate::error::{Error, Result};
 use crate::htmx::{HXBoosted, HXRedirect};
 use crate::models::user::{AuthContext, CreateUser, User};
 use crate::partials::layout::Layout;
-use crate::partials::signup_form::{signup_form, SignupFormProps};
+use crate::partials::register_form::{register_form, RegisterFormProps};
 
 #[serde_as]
 #[derive(Debug, Deserialize)]
-pub struct Signup {
+pub struct Register {
     pub email: String,
     pub password: String,
     pub password_confirmation: String,
@@ -24,26 +24,28 @@ pub struct Signup {
 
 pub async fn get(hx_boosted: Option<TypedHeader<HXBoosted>>, layout: Layout) -> Result<Response> {
     Ok(layout
-        .with_subtitle("signup")
+        .with_subtitle("register")
         .boosted(hx_boosted)
         .render(html! {
-            header {
-                h2 { "Signup" }
+            div class="center-horizontal" {
+                header class="center-text" {
+                    h2 { "Register" }
+                }
+                (register_form(RegisterFormProps::default()))
             }
-            (signup_form(SignupFormProps::default()))
         }))
 }
 
 pub async fn post(
     State(pool): State<PgPool>,
     mut auth: AuthContext,
-    Form(signup): Form<Signup>,
+    Form(register): Form<Register>,
 ) -> Result<Response> {
-    if signup.password != signup.password_confirmation {
+    if register.password != register.password_confirmation {
         // return Err(Error::BadRequest("passwords do not match"));
-        return Ok(signup_form(SignupFormProps {
-            email: Some(signup.email),
-            name: signup.name,
+        return Ok(register_form(RegisterFormProps {
+            email: Some(register.email),
+            name: register.name,
             password_error: Some("passwords do not match".to_string()),
             ..Default::default()
         })
@@ -52,9 +54,9 @@ pub async fn post(
     let user = match User::create(
         &pool,
         CreateUser {
-            email: signup.email.clone(),
-            password: signup.password.clone(),
-            name: signup.name.clone(),
+            email: register.email.clone(),
+            password: register.password.clone(),
+            name: register.name.clone(),
         },
     )
     .await
@@ -65,9 +67,9 @@ pub async fn post(
                 let field_errors = validation_errors.field_errors();
                 dbg!(&validation_errors);
                 dbg!(&field_errors);
-                return Ok(signup_form(SignupFormProps {
-                    email: Some(signup.email),
-                    name: signup.name,
+                return Ok(register_form(RegisterFormProps {
+                    email: Some(register.email),
+                    name: register.name,
                     email_error: field_errors.get("email").map(|&errors| {
                         errors
                             .iter()
@@ -96,9 +98,9 @@ pub async fn post(
             if let Error::Sqlx(sqlx::error::Error::Database(db_error)) = &err {
                 if let Some(constraint) = db_error.constraint() {
                     if constraint == "users_email_idx" {
-                        return Ok(signup_form(SignupFormProps {
-                            email: Some(signup.email),
-                            name: signup.name,
+                        return Ok(register_form(RegisterFormProps {
+                            email: Some(register.email),
+                            name: register.name,
                             email_error: Some("email already exists".to_string()),
                             ..Default::default()
                         })

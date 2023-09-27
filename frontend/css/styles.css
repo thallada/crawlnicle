@@ -6,6 +6,18 @@ html {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
+body {
+  display: flex;
+  flex-direction: column;
+  margin: 8px;
+  height: calc(100vh - 16px);
+}
+
+main#main-content {
+  flex-grow: 1;
+  margin: 0px 8px;
+}
+
 .htmx-indicator {
   display: none;
 }
@@ -64,7 +76,7 @@ header.header nav .auth {
 footer.footer {
   text-align: center;
   margin-top: 64px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 footer.footer hr {
@@ -222,7 +234,16 @@ header.feed-header button {
   margin-left: 24px;
 }
 
-/* Signup & Login */
+/* Register & Login */
+
+.center-horizontal {
+  width: fit-content;
+  margin: 0px auto;
+}
+
+.center-text {
+  text-align: center;
+}
 
 .auth-form-grid {
   display: grid;

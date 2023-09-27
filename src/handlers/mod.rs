@@ -8,4 +8,4 @@ pub mod feeds;
 pub mod log;
 pub mod login;
 pub mod logout;
-pub mod signup;
+pub mod register;

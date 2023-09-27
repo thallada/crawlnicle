@@ -27,10 +27,12 @@ pub async fn get(hx_boosted: Option<TypedHeader<HXBoosted>>, layout: Layout) -> 
         .with_subtitle("login")
         .boosted(hx_boosted)
         .render(html! {
-            header {
-                h2 { "Login" }
+            div class="center-horizontal" {
+                header class="center-text" {
+                    h2 { "Login" }
+                }
+                (login_form(LoginFormProps::default()))
             }
-            (login_form(LoginFormProps::default()))
         }))
 }
 

@@ -115,8 +115,8 @@ async fn main() -> Result<()> {
         .route("/login", get(handlers::login::get))
         .route("/login", post(handlers::login::post))
         .route("/logout", get(handlers::logout::get))
-        .route("/signup", get(handlers::signup::get))
-        .route("/signup", post(handlers::signup::post))
+        .route("/register", get(handlers::register::get))
+        .route("/register", post(handlers::register::post))
         .nest_service("/static", ServeDir::new("static"))
         .with_state(AppState {
             pool,

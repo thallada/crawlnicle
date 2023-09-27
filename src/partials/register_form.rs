@@ -1,7 +1,7 @@
 use maud::{html, Markup, PreEscaped};
 
 #[derive(Debug, Default)]
-pub struct SignupFormProps {
+pub struct RegisterFormProps {
     pub email: Option<String>,
     pub name: Option<String>,
     pub email_error: Option<String>,
@@ -10,8 +10,8 @@ pub struct SignupFormProps {
     pub general_error: Option<String>,
 }
 
-pub fn signup_form(props: SignupFormProps) -> Markup {
-    let SignupFormProps {
+pub fn register_form(props: RegisterFormProps) -> Markup {
+    let RegisterFormProps {
         email,
         name,
         email_error,
@@ -20,7 +20,7 @@ pub fn signup_form(props: SignupFormProps) -> Markup {
         general_error,
     } = props;
     html! {
-        form hx-post="/signup" hx-swap="outerHTML" class="auth-form-grid" {
+        form hx-post="/register" hx-swap="outerHTML" class="auth-form-grid" {
             label for="email" { "Email *" }
             input type="email" name="email" id="email" placeholder="Email" value=(email.unwrap_or_default()) required;
             @if let Some(email_error) = email_error {
