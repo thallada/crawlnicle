@@ -11,13 +11,16 @@ use axum::{
     TypedHeader,
 };
 use axum_login::{extractors::AuthContext, SqlxStore};
+use headers::HeaderValue;
 use maud::{html, Markup, DOCTYPE};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::models::user::User;
-use crate::{config::Config, partials::footer::footer};
-use crate::{htmx::HXBoosted, partials::header::header};
+use crate::config::Config;
+use crate::htmx::HXTarget;
+use crate::partials::header::header;
+use crate::partials::footer::footer;
 #[cfg(not(debug_assertions))]
 use crate::{CSS_MANIFEST, JS_MANIFEST};
 
@@ -26,7 +29,7 @@ pub struct Layout {
     pub title: String,
     pub subtitle: Option<String>,
     pub user: Option<User>,
-    pub boosted: bool,
+    pub main_content_targeted: bool,
 }
 
 #[async_trait]
@@ -118,17 +121,16 @@ impl Layout {
         self
     }
 
-    /// If the given HX-Boosted header is present and "true", makes this Layout boosted.
-    ///
-    /// A boosted layout will skip rendering the layout and only render the template with a 
-    /// hx-swap-oob <title> element to update the document title.
+    /// If the given HX-Target is present and equal to "main-content", then this function will make 
+    /// this Layout skip rendering the layout and only render the template with a hx-swap-oob 
+    /// <title> element to update the document title.
     ///
     /// Links and forms that are boosted with the hx-boost attribute are only updating a portion of 
     /// the page inside the layout, so there is no need to render and send the layout again.
-    pub fn boosted(mut self, hx_boosted: Option<TypedHeader<HXBoosted>>) -> Self {
-        if let Some(hx_boosted) = hx_boosted {
-            if hx_boosted.is_boosted() {
-                self.boosted = true;
+    pub fn targeted(mut self, hx_target: Option<TypedHeader<HXTarget>>) -> Self {
+        if let Some(hx_target) = hx_target {
+            if hx_target.target == HeaderValue::from_static("main-content") {
+                self.main_content_targeted = true;
             }
         }
         self
@@ -143,7 +145,7 @@ impl Layout {
     }
 
     pub fn render(self, template: Markup) -> Response {
-        if self.boosted {
+        if self.main_content_targeted {
             html! {
                 title hx-swap-oob="true" { (self.full_title()) }
                 (template)

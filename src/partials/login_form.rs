@@ -16,7 +16,7 @@ pub fn login_form(props: LoginFormProps) -> Markup {
         general_error,
     } = props;
     html! {
-        form hx-post="/login" hx-swap="outerHTML" class="auth-form-grid" {
+        form action="/login" method="post" class="auth-form-grid" {
             label for="email" { "Email" }
             input type="email" name="email" id="email" placeholder="Email" value=(email.unwrap_or_default()) required;
             @if let Some(email_error) = email_error {

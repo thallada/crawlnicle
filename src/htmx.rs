@@ -6,7 +6,9 @@ use http::StatusCode;
 #[allow(clippy::declare_interior_mutable_const)]
 pub const HX_LOCATION: HeaderName = HeaderName::from_static("hx-location");
 #[allow(clippy::declare_interior_mutable_const)]
-pub const HX_BOOSTED: HeaderName = HeaderName::from_static("hx-boosted");
+pub const HX_REQUEST: HeaderName = HeaderName::from_static("hx-request");
+#[allow(clippy::declare_interior_mutable_const)]
+pub const HX_TARGET: HeaderName = HeaderName::from_static("hx-target");
 
 /// Sets the HX-Location header so that HTMX redirects to the given URI. Unlike 
 /// axum::response::Redirect this does not return a 300-level status code (instead, a 200 status 
@@ -35,18 +37,18 @@ impl IntoResponse for HXRedirect {
 }
 
 #[derive(Debug)]
-pub struct HXBoosted(bool);
+pub struct HXRequest(bool);
 
-impl HXBoosted {
-    pub fn is_boosted(&self) -> bool {
+impl HXRequest {
+    pub fn is_true(&self) -> bool {
         self.0
     }
 }
 
-impl Header for HXBoosted {
+impl Header for HXRequest {
     fn name() -> &'static HeaderName {
-        static HX_BOOSTED_STATIC: HeaderName = HX_BOOSTED;
-        &HX_BOOSTED_STATIC
+        static HX_REQUEST_STATIC: HeaderName = HX_REQUEST;
+        &HX_REQUEST_STATIC
     }
 
     fn decode<'i, I>(values: &mut I) -> Result<Self, headers::Error>
@@ -58,9 +60,9 @@ impl Header for HXBoosted {
             .ok_or_else(headers::Error::invalid)?;
 
         if value == "true" {
-            Ok(HXBoosted(true))
+            Ok(HXRequest(true))
         } else if value == "false" {
-            Ok(HXBoosted(false))
+            Ok(HXRequest(false))
         } else {
             Err(headers::Error::invalid())
         }
@@ -79,5 +81,36 @@ impl Header for HXBoosted {
         let value = HeaderValue::from_static(s);
 
         values.extend(std::iter::once(value));
+    }
+}
+
+#[derive(Debug)]
+pub struct HXTarget {
+    pub target: HeaderValue,
+}
+
+impl Header for HXTarget {
+    fn name() -> &'static HeaderName {
+        static HX_TARGET_STATIC: HeaderName = HX_TARGET;
+        &HX_TARGET_STATIC
+    }
+
+    fn decode<'i, I>(values: &mut I) -> Result<Self, headers::Error>
+    where
+        I: Iterator<Item = &'i HeaderValue>,
+    {
+        let value = values
+            .next()
+            .ok_or_else(headers::Error::invalid)?;
+
+        Ok(HXTarget{ target: value.clone() })
+    }
+
+    fn encode<E>(&self, values: &mut E)
+    where
+        E: Extend<HeaderValue>,
+    {
+
+        values.extend(std::iter::once(self.target.clone()));
     }
 }

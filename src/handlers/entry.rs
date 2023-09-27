@@ -8,7 +8,7 @@ use sqlx::PgPool;
 
 use crate::config::Config;
 use crate::error::Result;
-use crate::htmx::HXBoosted;
+use crate::htmx::HXTarget;
 use crate::models::entry::Entry;
 use crate::partials::layout::Layout;
 use crate::uuid::Base62Uuid;
@@ -17,7 +17,7 @@ pub async fn get(
     Path(id): Path<Base62Uuid>,
     State(pool): State<PgPool>,
     State(config): State<Config>,
-    hx_boosted: Option<TypedHeader<HXBoosted>>,
+    hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
 ) -> Result<Response> {
     let entry = Entry::get(&pool, id.as_uuid()).await?;
@@ -30,7 +30,7 @@ pub async fn get(
     let content = fs::read_to_string(content_path).unwrap_or_else(|_| "No content".to_string());
     Ok(layout
         .with_subtitle(&title)
-        .boosted(hx_boosted)
+        .targeted(hx_target)
         .render(html! {
             article {
                 header {

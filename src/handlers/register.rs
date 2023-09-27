@@ -7,7 +7,7 @@ use serde_with::{serde_as, NoneAsEmptyString};
 use sqlx::PgPool;
 
 use crate::error::{Error, Result};
-use crate::htmx::{HXBoosted, HXRedirect};
+use crate::htmx::{HXTarget, HXRedirect};
 use crate::models::user::{AuthContext, CreateUser, User};
 use crate::partials::layout::Layout;
 use crate::partials::register_form::{register_form, RegisterFormProps};
@@ -22,10 +22,10 @@ pub struct Register {
     pub name: Option<String>,
 }
 
-pub async fn get(hx_boosted: Option<TypedHeader<HXBoosted>>, layout: Layout) -> Result<Response> {
+pub async fn get(hx_target: Option<TypedHeader<HXTarget>>, layout: Layout) -> Result<Response> {
     Ok(layout
         .with_subtitle("register")
-        .boosted(hx_boosted)
+        .targeted(hx_target)
         .render(html! {
             div class="center-horizontal" {
                 header class="center-text" {

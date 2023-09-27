@@ -5,7 +5,7 @@ use maud::html;
 use sqlx::PgPool;
 
 use crate::error::Result;
-use crate::htmx::HXBoosted;
+use crate::htmx::HXTarget;
 use crate::models::feed::{Feed, GetFeedsOptions};
 use crate::partials::add_feed_form::add_feed_form;
 use crate::partials::feed_list::feed_list;
@@ -14,14 +14,14 @@ use crate::partials::opml_import_form::opml_import_form;
 
 pub async fn get(
     State(pool): State<PgPool>,
-    hx_boosted: Option<TypedHeader<HXBoosted>>,
+    hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
 ) -> Result<Response> {
     let options = GetFeedsOptions::default();
     let feeds = Feed::get_all(&pool, &options).await?;
     Ok(layout
         .with_subtitle("feeds")
-        .boosted(hx_boosted)
+        .targeted(hx_target)
         .render(html! {
             header { h2 { "Feeds" } }
             div class="feeds" {
