@@ -1,4 +1,5 @@
 use axum::response::{IntoResponse, Response};
+use axum::TypedHeader;
 use axum::{extract::State, Form};
 use maud::html;
 use serde::Deserialize;
@@ -7,7 +8,7 @@ use sqlx::PgPool;
 
 use crate::auth::verify_password;
 use crate::error::{Error, Result};
-use crate::htmx::HXRedirect;
+use crate::htmx::{HXBoosted, HXRedirect};
 use crate::partials::login_form::{login_form, LoginFormProps};
 use crate::{
     models::user::{AuthContext, User},
@@ -21,13 +22,16 @@ pub struct Login {
     password: String,
 }
 
-pub async fn get(layout: Layout) -> Result<Response> {
-    Ok(layout.with_subtitle("login").render(html! {
-        header {
-            h2 { "Login" }
-        }
-        (login_form(LoginFormProps::default()))
-    }))
+pub async fn get(hx_boosted: Option<TypedHeader<HXBoosted>>, layout: Layout) -> Result<Response> {
+    Ok(layout
+        .with_subtitle("login")
+        .boosted(hx_boosted)
+        .render(html! {
+            header {
+                h2 { "Login" }
+            }
+            (login_form(LoginFormProps::default()))
+        }))
 }
 
 pub async fn post(

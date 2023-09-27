@@ -26,6 +26,7 @@ clap = { version = "4.4", features = ["derive", "env"] }
 dotenvy = "0.15"
 feed-rs = "1.3"
 futures = "0.3"
+headers = "0.3"
 http = "0.2.9"
 maud = { version = "0.25", features = ["axum"] }
 notify = "6"

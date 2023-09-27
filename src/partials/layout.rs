@@ -8,15 +8,16 @@ use axum::{
     extract::{FromRef, FromRequestParts, State},
     http::request::Parts,
     response::{Html, IntoResponse, Response},
+    TypedHeader,
 };
 use axum_login::{extractors::AuthContext, SqlxStore};
 use maud::{html, Markup, DOCTYPE};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::partials::header::header;
-use crate::{config::Config, partials::footer::footer};
 use crate::models::user::User;
+use crate::{config::Config, partials::footer::footer};
+use crate::{htmx::HXBoosted, partials::header::header};
 #[cfg(not(debug_assertions))]
 use crate::{CSS_MANIFEST, JS_MANIFEST};
 
@@ -25,6 +26,7 @@ pub struct Layout {
     pub title: String,
     pub subtitle: Option<String>,
     pub user: Option<User>,
+    pub boosted: bool,
 }
 
 #[async_trait]
@@ -39,9 +41,10 @@ where
         let State(config) = State::<Config>::from_request_parts(parts, state)
             .await
             .map_err(|err| err.into_response())?;
-        let auth_context = AuthContext::<Uuid, User, SqlxStore<PgPool, User>>::from_request_parts(parts, state)
-            .await
-            .map_err(|err| err.into_response())?;
+        let auth_context =
+            AuthContext::<Uuid, User, SqlxStore<PgPool, User>>::from_request_parts(parts, state)
+                .await
+                .map_err(|err| err.into_response())?;
         Ok(Self {
             title: config.title,
             user: auth_context.current_user,
@@ -115,6 +118,22 @@ impl Layout {
         self
     }
 
+    /// If the given HX-Boosted header is present and "true", makes this Layout boosted.
+    ///
+    /// A boosted layout will skip rendering the layout and only render the template with a 
+    /// hx-swap-oob <title> element to update the document title.
+    ///
+    /// Links and forms that are boosted with the hx-boost attribute are only updating a portion of 
+    /// the page inside the layout, so there is no need to render and send the layout again.
+    pub fn boosted(mut self, hx_boosted: Option<TypedHeader<HXBoosted>>) -> Self {
+        if let Some(hx_boosted) = hx_boosted {
+            if hx_boosted.is_boosted() {
+                self.boosted = true;
+            }
+        }
+        self
+    }
+
     fn full_title(&self) -> String {
         if let Some(subtitle) = &self.subtitle {
             format!("{} - {}", self.title, subtitle)
@@ -124,28 +143,34 @@ impl Layout {
     }
 
     pub fn render(self, template: Markup) -> Response {
-        let with_layout = html! {
-            (DOCTYPE)
-            html lang="en" {
-                head {
-                    meta charset="utf-8";
-                    title { (self.full_title()) }
-                    @for js_file in js_manifest() {
-                        script type="module" src=(js_file) {}
+        if self.boosted {
+            html! {
+                title hx-swap-oob="true" { (self.full_title()) }
+                (template)
+            }
+            .into_response()
+        } else {
+            html! {
+                (DOCTYPE)
+                html lang="en" {
+                    head {
+                        meta charset="utf-8";
+                        title { (self.full_title()) }
+                        @for js_file in js_manifest() {
+                            script type="module" src=(js_file) {}
+                        }
+                        @for css_file in css_manifest() {
+                            link rel="stylesheet" href=(css_file) {}
+                        }
                     }
-                    @for css_file in css_manifest() {
-                        link rel="stylesheet" href=(css_file) {}
+                    body hx-boost="true" hx-target="#main-content" {
+                        (header(&self.title, self.user))
+                        main id="main-content" { (template) }
+                        (footer())
                     }
-                }
-                body hx-booster="true" {
-                    (header(&self.title, self.user))
-                    (template)
-                    (footer())
                 }
             }
+            .into_response()
         }
-        .into_string();
-
-        Html(with_layout).into_response()
     }
 }

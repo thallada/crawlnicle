@@ -744,6 +744,7 @@ dependencies = [
  "dotenvy",
  "feed-rs",
  "futures",
+ "headers",
  "http",
  "maud",
  "notify",

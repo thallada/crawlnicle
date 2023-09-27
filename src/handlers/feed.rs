@@ -4,7 +4,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::sse::{Event, KeepAlive};
 use axum::response::{IntoResponse, Redirect, Response, Sse};
-use axum::Form;
+use axum::{Form, TypedHeader};
 use feed_rs::parser;
 use maud::html;
 use serde::Deserialize;
@@ -16,6 +16,7 @@ use tokio_stream::StreamExt;
 use crate::actors::crawl_scheduler::{CrawlSchedulerHandle, CrawlSchedulerHandleMessage};
 use crate::actors::feed_crawler::FeedCrawlerHandleMessage;
 use crate::error::{Error, Result};
+use crate::htmx::HXBoosted;
 use crate::models::entry::{Entry, GetEntriesOptions};
 use crate::models::feed::{CreateFeed, Feed};
 use crate::partials::add_feed_form::add_feed_form;
@@ -27,6 +28,7 @@ use crate::uuid::Base62Uuid;
 pub async fn get(
     Path(id): Path<Base62Uuid>,
     State(pool): State<PgPool>,
+    hx_boosted: Option<TypedHeader<HXBoosted>>,
     layout: Layout,
 ) -> Result<Response> {
     let feed = Feed::get(&pool, id.as_uuid()).await?;
@@ -37,7 +39,7 @@ pub async fn get(
     let title = feed.title.unwrap_or_else(|| "Untitled Feed".to_string());
     let entries = Entry::get_all(&pool, &options).await?;
     let delete_url = format!("/feed/{}/delete", id);
-    Ok(layout.with_subtitle(&title).render(html! {
+    Ok(layout.with_subtitle(&title).boosted(hx_boosted).render(html! {
         header class="feed-header" {
             h2 { (title) }
             button class="edit-feed" { "✏️ Edit feed" }

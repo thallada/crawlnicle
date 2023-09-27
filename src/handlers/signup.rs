@@ -1,4 +1,5 @@
 use axum::response::{IntoResponse, Response};
+use axum::TypedHeader;
 use axum::{extract::State, Form};
 use maud::html;
 use serde::Deserialize;
@@ -6,7 +7,7 @@ use serde_with::{serde_as, NoneAsEmptyString};
 use sqlx::PgPool;
 
 use crate::error::{Error, Result};
-use crate::htmx::HXRedirect;
+use crate::htmx::{HXBoosted, HXRedirect};
 use crate::models::user::{AuthContext, CreateUser, User};
 use crate::partials::layout::Layout;
 use crate::partials::signup_form::{signup_form, SignupFormProps};
@@ -21,13 +22,16 @@ pub struct Signup {
     pub name: Option<String>,
 }
 
-pub async fn get(layout: Layout) -> Result<Response> {
-    Ok(layout.with_subtitle("signup").render(html! {
-        header {
-            h2 { "Signup" }
-        }
-        (signup_form(SignupFormProps::default()))
-    }))
+pub async fn get(hx_boosted: Option<TypedHeader<HXBoosted>>, layout: Layout) -> Result<Response> {
+    Ok(layout
+        .with_subtitle("signup")
+        .boosted(hx_boosted)
+        .render(html! {
+            header {
+                h2 { "Signup" }
+            }
+            (signup_form(SignupFormProps::default()))
+        }))
 }
 
 pub async fn post(

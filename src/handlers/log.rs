@@ -9,6 +9,7 @@ use axum::response::{
     sse::{Event, Sse},
     Response,
 };
+use axum::TypedHeader;
 use bytes::Bytes;
 use maud::{html, PreEscaped};
 use tokio::sync::watch::Receiver;
@@ -17,16 +18,20 @@ use tokio_stream::Stream;
 use tokio_stream::StreamExt;
 
 use crate::error::Result;
+use crate::htmx::HXBoosted;
 use crate::log::MEM_LOG;
 use crate::partials::layout::Layout;
 
-pub async fn get(layout: Layout) -> Result<Response> {
+pub async fn get(hx_boosted: Option<TypedHeader<HXBoosted>>, layout: Layout) -> Result<Response> {
     let mem_buf = MEM_LOG.lock().unwrap();
-    Ok(layout.with_subtitle("log").render(html! {
-        pre id="log" hx-sse="connect:/log/stream swap:message" hx-swap="beforeend" {
-            (PreEscaped(convert_escaped(from_utf8(mem_buf.as_slices().0).unwrap()).unwrap()))
-        }
-    }))
+    Ok(layout
+        .with_subtitle("log")
+        .boosted(hx_boosted)
+        .render(html! {
+            pre id="log" hx-sse="connect:/log/stream swap:message" hx-swap="beforeend" hx-target="#log" {
+                (PreEscaped(convert_escaped(from_utf8(mem_buf.as_slices().0).unwrap()).unwrap()))
+            }
+        }))
 }
 
 pub async fn stream(
