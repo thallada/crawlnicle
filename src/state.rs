@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use axum::extract::FromRef;
 use bytes::Bytes;
+use lettre::SmtpTransport;
 use reqwest::Client;
 use sqlx::PgPool;
 use tokio::sync::{broadcast, watch, Mutex};
@@ -47,6 +48,7 @@ pub struct AppState {
     pub crawl_scheduler: CrawlSchedulerHandle,
     pub importer: ImporterHandle,
     pub imports: Imports,
+    pub mailer: SmtpTransport,
 }
 
 impl FromRef<AppState> for PgPool {
@@ -100,5 +102,11 @@ impl FromRef<AppState> for ImporterHandle {
 impl FromRef<AppState> for Imports {
     fn from_ref(state: &AppState) -> Self {
         state.imports.clone()
+    }
+}
+
+impl FromRef<AppState> for SmtpTransport {
+    fn from_ref(state: &AppState) -> Self {
+        state.mailer.clone()
     }
 }

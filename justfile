@@ -41,7 +41,7 @@ watch-frontend: install-frontend
     -s 'just build-dev-frontend'
 
 watch-backend:
-  mold -run cargo watch \
+  cargo watch \
     --ignore 'logs/*' \
     --ignore 'static/*' \
     --ignore 'frontend/*' \

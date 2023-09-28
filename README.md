@@ -21,6 +21,9 @@ Install these requirements to get started developing crawlnicle.
 
 * [just](https://github.com/casey/just#installation)
 * [bun](https://bun.sh)
+* An [SMTP server for sending 
+emails](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol) (put
+configuration in the `.env` file)
 * (optional) [cargo-watch](https://github.com/watchexec/cargo-watch#install) for
 auto-recompiling the server in development
 * (optional) [mold](https://github.com/rui314/mold#installation) for faster
@@ -59,6 +62,9 @@ builds
    TITLE=crawlnicle
    MAX_MEM_LOG_SIZE=1000000
    CONTENT_DIR=./content
+   SMTP_SERVER=smtp.gmail.com
+   SMTP_USER=user
+   SMTP_PASSWORD=password
    ```
 
 1. Run `just migrate` (or `sqlx migrate run`) which will run all the database

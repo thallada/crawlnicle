@@ -18,4 +18,10 @@ pub struct Config {
     pub max_mem_log_size: usize,
     #[clap(long, env)]
     pub content_dir: String,
+    #[clap(long, env)]
+    pub smtp_server: String,
+    #[clap(long, env)]
+    pub smtp_user: String,
+    #[clap(long, env)]
+    pub smtp_password: String,
 }

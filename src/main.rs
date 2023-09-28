@@ -14,6 +14,8 @@ use axum_login::{
 use bytes::Bytes;
 use clap::Parser;
 use dotenvy::dotenv;
+use lettre::transport::smtp::authentication::Credentials;
+use lettre::SmtpTransport;
 use notify::Watcher;
 use rand::Rng;
 use reqwest::Client;
@@ -78,6 +80,14 @@ async fn main() -> Result<()> {
         .with_query("select * from users where user_id = $1");
     let auth_layer = AuthLayer::new(user_store, &secret);
 
+    let creds = Credentials::new(config.smtp_user.clone(), config.smtp_password.clone());
+
+    // Open a remote connection to gmail
+    let mailer = SmtpTransport::relay(&config.smtp_server)
+        .unwrap()
+        .credentials(creds)
+        .build();
+
     sqlx::migrate!().run(&pool).await?;
 
     let crawl_scheduler = CrawlSchedulerHandle::new(
@@ -128,6 +138,7 @@ async fn main() -> Result<()> {
             crawl_scheduler,
             importer,
             imports,
+            mailer,
         })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .layer(auth_layer)
