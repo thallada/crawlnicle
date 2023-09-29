@@ -1,4 +1,6 @@
 use clap::Parser;
+use lettre::message::Mailbox;
+use url::Url;
 
 #[derive(Parser, Clone, Debug)]
 pub struct Config {
@@ -13,6 +15,8 @@ pub struct Config {
     #[clap(long, env)]
     pub port: u16,
     #[clap(long, env)]
+    pub public_url: Url,
+    #[clap(long, env)]
     pub title: String,
     #[clap(long, env)]
     pub max_mem_log_size: usize,
@@ -24,4 +28,6 @@ pub struct Config {
     pub smtp_user: String,
     #[clap(long, env)]
     pub smtp_password: String,
+    #[clap(long, env)]
+    pub email_from: Mailbox,
 }

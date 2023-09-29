@@ -1,4 +1,5 @@
 pub mod api;
+pub mod confirm_email;
 pub mod entries;
 pub mod entry;
 pub mod home;

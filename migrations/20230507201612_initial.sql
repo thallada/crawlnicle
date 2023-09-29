@@ -73,6 +73,7 @@ create table if not exists "users" (
     user_id uuid primary key default uuid_generate_v1mc(),
     password_hash text not null,
     email text not null collate case_insensitive,
+    email_verified boolean not null default false,
     name text,
     created_at timestamptz not null default now(),
     updated_at timestamptz,
@@ -80,3 +81,12 @@ create table if not exists "users" (
 );
 create unique index on "users" (email);
 select trigger_updated_at('"users"');
+
+create table if not exists "user_email_verification_token" (
+    token_id uuid primary key default uuid_generate_v4(),
+    user_id uuid not null references "users" (user_id) on delete cascade,
+    expires_at timestamptz not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz
+);
+select trigger_updated_at('"user_email_verification_token"');

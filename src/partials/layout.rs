@@ -7,7 +7,7 @@ use axum::{
     async_trait,
     extract::{FromRef, FromRequestParts, State},
     http::request::Parts,
-    response::{Html, IntoResponse, Response},
+    response::{IntoResponse, Response},
     TypedHeader,
 };
 use axum_login::{extractors::AuthContext, SqlxStore};

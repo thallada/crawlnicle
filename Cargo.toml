@@ -17,7 +17,7 @@ ansi-to-html = "0.1"
 anyhow = "1"
 argon2 = "0.5"
 async-redis-session = "0.2"
-axum = { version = "0.6", features = ["form", "headers", "multipart"] }
+axum = { version = "0.6", features = ["form", "headers", "multipart", "query"] }
 # waiting for new axum-login release which will support sqlx v. 0.7+
 axum-login = { git = "https://github.com/maxcountryman/axum-login", branch = "main", features = ["postgres"] }
 bytes = "1.4"

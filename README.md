@@ -56,6 +56,7 @@ builds
    RUST_LOG=crawlnicle=debug,cli=debug,lib=debug,tower_http=debug,sqlx=debug
    HOST=127.0.0.1
    PORT=3000
+   PUBLIC_URL=http://localhost:3000
    DATABASE_URL=postgresql://crawlnicle:<password>@localhost/crawlnicle
    DATABASE_MAX_CONNECTIONS=5
    REDIS_URL=redis://localhost
@@ -65,6 +66,7 @@ builds
    SMTP_SERVER=smtp.gmail.com
    SMTP_USER=user
    SMTP_PASSWORD=password
+   EMAIL_FROM="crawlnicle <no-reply@mail.crawlnicle.com>"
    ```
 
 1. Run `just migrate` (or `sqlx migrate run`) which will run all the database

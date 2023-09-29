@@ -12,6 +12,7 @@ use crate::error::{Error, Result};
 pub struct User {
     pub user_id: Uuid,
     pub email: String,
+    pub email_verified: bool,
     pub password_hash: String,
     pub name: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -95,6 +96,7 @@ impl User {
             ) returning
                 user_id,
                 email,
+                email_verified,
                 password_hash,
                 name,
                 created_at,
@@ -107,6 +109,26 @@ impl User {
         )
         .fetch_one(pool)
         .await?)
+    }
+
+    pub async fn verify_email(pool: &PgPool, user_id: Uuid) -> Result<User> {
+        sqlx::query_as!(
+            User,
+            r#"update users set
+                email_verified = true
+            where user_id = $1
+            returning *
+            "#,
+            user_id
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(|error| {
+            if let sqlx::error::Error::RowNotFound = error {
+                return Error::NotFoundUuid("user", user_id);
+            }
+            Error::Sqlx(error)
+        })
     }
 }
 
