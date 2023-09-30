@@ -8,6 +8,7 @@ pub mod handlers;
 pub mod headers;
 pub mod htmx;
 pub mod log;
+pub mod mailers;
 pub mod models;
 pub mod partials;
 pub mod state;

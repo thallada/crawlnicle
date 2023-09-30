@@ -249,8 +249,9 @@ header.feed-header button {
   display: grid;
   grid-template-columns: fit-content(100%) minmax(100px, 400px);
   grid-gap: 16px;
-  margin: 16px;
+  margin: 16px auto;
   margin-bottom: 32px;
+  width: fit-content;
 }
 
 .auth-form-grid label {
