@@ -5,6 +5,7 @@ use maud::html;
 use serde::Deserialize;
 use serde_with::serde_as;
 use sqlx::PgPool;
+use tracing::info;
 
 use crate::auth::verify_password;
 use crate::error::{Error, Result};
@@ -56,6 +57,7 @@ pub async fn post(
         Ok(user) => user,
         Err(err) => {
             if let Error::NotFoundString(_, _) = err {
+                info!(email = login.email, "invalid enail");
                 return Ok(login_page(
                     hx_target,
                     layout,
@@ -74,6 +76,7 @@ pub async fn post(
         .await
         .is_err()
     {
+        info!(user_id = %user.user_id, "invalid password");
         return Ok(login_page(
             hx_target,
             layout,
@@ -84,6 +87,7 @@ pub async fn post(
             },
         ));
     }
+    info!(user_id = %user.user_id, "login successful");
     auth.login(&user)
         .await
         .map_err(|_| Error::InternalServerError)?;

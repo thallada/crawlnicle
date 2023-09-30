@@ -2,15 +2,30 @@ use maud::{html, Markup};
 
 use crate::models::user_email_verification_token::UserEmailVerificationToken;
 
-pub fn confirm_email_form(token: Option<UserEmailVerificationToken>) -> Markup {
+#[derive(Debug, Clone, Default)]
+pub struct ConfirmEmailFormProps {
+    pub token: Option<UserEmailVerificationToken>,
+    pub email: Option<String>,
+}
+
+pub fn confirm_email_form(props: ConfirmEmailFormProps) -> Markup {
+    let ConfirmEmailFormProps { token, email } = props;
     html! {
         form action="/confirm-email" method="post" class="auth-form-grid" {
-            @if let Some(token) = token {
-                input type="text" name="token" id="token" value=(token.token_id) style="display:none;";
-            } @else {
-                label for="email" { "Email" }
-                input type="email" name="email" id="email" placeholder="Email" required;
-            }
+            input
+                type="text"
+                name="token"
+                id="token"
+                value=(token.map(|t| t.token_id.to_string()).unwrap_or_default())
+                style="display:none;";
+            label for="email" { "Email" }
+            input
+                type="email"
+                name="email"
+                id="email"
+                placeholder="Email"
+                value=(email.unwrap_or_default())
+                required;
             button type="submit" { "Resend confirmation email" }
         }
     }

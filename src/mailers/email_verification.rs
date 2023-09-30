@@ -42,11 +42,14 @@ pub fn send_confirmation_email(pool: PgPool, mailer: SmtpTransport, config: Conf
                 return;
             }
         };
-        let confirm_link = format!(
-            "{}/confirm-email?token_id={}",
-            config.public_url,
-            Base62Uuid::from(token.token_id)
-        );
+        let mut confirm_link = config
+            .public_url
+            .clone();
+        confirm_link.set_path("confirm-email");
+        confirm_link.query_pairs_mut()
+            .append_pair("token_id", &Base62Uuid::from(token.token_id).to_string());
+        let confirm_link = confirm_link.as_str();
+
         let email = match Message::builder()
             .from(config.email_from.clone())
             .to(mailbox)

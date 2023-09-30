@@ -128,6 +128,7 @@ async fn main() -> Result<()> {
         .route("/register", get(handlers::register::get))
         .route("/register", post(handlers::register::post))
         .route("/confirm-email", get(handlers::confirm_email::get))
+        .route("/confirm-email", post(handlers::confirm_email::post))
         .nest_service("/static", ServeDir::new("static"))
         .with_state(AppState {
             pool,
