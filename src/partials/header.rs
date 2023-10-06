@@ -14,7 +14,12 @@ pub fn header(title: &str, user: Option<User>) -> Markup {
                 }
                 div class="auth" {
                     @if let Some(user) = user {
-                        (user_name(user))
+                        (user_name(user.clone()))
+                        @if !user.email_verified {
+                            span { " (" }
+                            a href="/confirm-email" { "unverified" }
+                            span { ")" }
+                        }
                         span { " | " }
                         a href="/logout" { "logout" }
                     } @else {

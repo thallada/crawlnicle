@@ -4,6 +4,8 @@ use http::header::{HeaderName, HeaderValue};
 use http::StatusCode;
 
 #[allow(clippy::declare_interior_mutable_const)]
+pub const HX_REDIRECT: HeaderName = HeaderName::from_static("hx-redirect");
+#[allow(clippy::declare_interior_mutable_const)]
 pub const HX_LOCATION: HeaderName = HeaderName::from_static("hx-location");
 #[allow(clippy::declare_interior_mutable_const)]
 pub const HX_REQUEST: HeaderName = HeaderName::from_static("hx-request");
@@ -16,23 +18,38 @@ pub const HX_TARGET: HeaderName = HeaderName::from_static("hx-target");
 #[derive(Debug, Clone)]
 pub struct HXRedirect {
     location: HeaderValue,
+    reload: bool,
 }
 
 impl HXRedirect {
     pub fn to(uri: &str) -> Self {
         Self {
             location: HeaderValue::try_from(uri).expect("URI isn't a valid header value"),
+            reload: false,
         }
+    }
+
+    pub fn reload(mut self, reload: bool) -> Self {
+        self.reload = reload;
+        self
     }
 }
 
 impl IntoResponse for HXRedirect {
     fn into_response(self) -> Response {
-        (
-            StatusCode::OK,
-            [(HX_LOCATION, self.location)],
-        )
-            .into_response()
+        if self.reload {
+            (
+                StatusCode::OK,
+                [(HX_REDIRECT, self.location)],
+            )
+                .into_response()
+        } else {
+            (
+                StatusCode::OK,
+                [(HX_LOCATION, self.location)],
+            )
+                .into_response()
+        }
     }
 }
 

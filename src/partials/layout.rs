@@ -10,12 +10,10 @@ use axum::{
     response::{IntoResponse, Response},
     TypedHeader,
 };
-use axum_login::{extractors::AuthContext, SqlxStore};
 use headers::HeaderValue;
 use maud::{html, Markup, DOCTYPE};
-use sqlx::PgPool;
-use uuid::Uuid;
 
+use crate::models::user::AuthContext;
 use crate::models::user::User;
 use crate::config::Config;
 use crate::htmx::HXTarget;
@@ -45,7 +43,7 @@ where
             .await
             .map_err(|err| err.into_response())?;
         let auth_context =
-            AuthContext::<Uuid, User, SqlxStore<PgPool, User>>::from_request_parts(parts, state)
+            AuthContext::from_request_parts(parts, state)
                 .await
                 .map_err(|err| err.into_response())?;
         Ok(Self {

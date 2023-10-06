@@ -91,5 +91,5 @@ pub async fn post(
     auth.login(&user)
         .await
         .map_err(|_| Error::InternalServerError)?;
-    Ok(HXRedirect::to("/").into_response())
+    Ok(HXRedirect::to("/").reload(true).into_response())
 }

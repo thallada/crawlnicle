@@ -1,7 +1,7 @@
 use axum::extract::{Query, State};
 use axum::response::Response;
 use axum::{Form, TypedHeader};
-use axum_login::{extractors::AuthContext, SqlxStore};
+use axum_login::SqlxStore;
 use lettre::SmtpTransport;
 use maud::html;
 use serde::Deserialize;
@@ -14,7 +14,7 @@ use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::htmx::HXTarget;
 use crate::mailers::email_verification::send_confirmation_email;
-use crate::models::user::User;
+use crate::models::user::{AuthContext, User};
 use crate::models::user_email_verification_token::UserEmailVerificationToken;
 use crate::partials::confirm_email_form::{confirm_email_form, ConfirmEmailFormProps};
 use crate::partials::layout::Layout;
@@ -27,7 +27,7 @@ pub struct ConfirmEmailQuery {
 
 pub async fn get(
     State(pool): State<PgPool>,
-    auth: AuthContext<Uuid, User, SqlxStore<PgPool, User>>,
+    auth: AuthContext,
     hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
     query: Query<ConfirmEmailQuery>,

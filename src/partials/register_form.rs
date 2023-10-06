@@ -20,7 +20,7 @@ pub fn register_form(props: RegisterFormProps) -> Markup {
         general_error,
     } = props;
     html! {
-        form hx-post="/register" hx-swap="outerHTML" class="auth-form-grid" {
+        form action="/register" method="post" class="auth-form-grid" {
             label for="email" { "Email *" }
             input type="email" name="email" id="email" placeholder="Email" value=(email.unwrap_or_default()) required;
             @if let Some(email_error) = email_error {
