@@ -67,6 +67,7 @@ builds
    SMTP_USER=user
    SMTP_PASSWORD=password
    EMAIL_FROM="crawlnicle <no-reply@mail.crawlnicle.com>"
+   SESSION_SECRET=64-bytes-of-secret
    ```
 
 1. Run `just migrate` (or `sqlx migrate run`) which will run all the database

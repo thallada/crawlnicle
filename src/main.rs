@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
     let domain_locks = DomainLocks::new();
     let client = Client::builder().user_agent(USER_AGENT).build()?;
 
-    let secret = rand::thread_rng().gen::<[u8; 64]>();
+    let secret = config.session_secret.as_bytes();
 
     let pool = PgPoolOptions::new()
         .max_connections(config.database_max_connections)

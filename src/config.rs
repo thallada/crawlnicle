@@ -30,4 +30,6 @@ pub struct Config {
     pub smtp_password: String,
     #[clap(long, env)]
     pub email_from: Mailbox,
+    #[clap(long, env)]
+    pub session_secret: String,
 }
