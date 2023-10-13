@@ -108,51 +108,49 @@ impl Entry {
                 .fetch_all(pool)
                 .await
             }
-        } else {
-            if let Some(published_before) = options.published_before {
-                if let Some(id_before) = options.id_before {
-                    sqlx::query_as!(
-                        Entry,
-                        "select * from entry
-                            where deleted_at is null
-                            and (published_at, entry_id) < ($1, $2)
-                            order by published_at desc, entry_id desc
-                            limit $3
-                        ",
-                        published_before,
-                        id_before,
-                        options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
-                    )
-                    .fetch_all(pool)
-                    .await
-                } else {
-                    sqlx::query_as!(
-                        Entry,
-                        "select * from entry
-                            where deleted_at is null
-                            and published_at < $1
-                            order by published_at desc
-                            limit $2
-                        ",
-                        published_before,
-                        options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
-                    )
-                    .fetch_all(pool)
-                    .await
-                }
+        } else if let Some(published_before) = options.published_before {
+            if let Some(id_before) = options.id_before {
+                sqlx::query_as!(
+                    Entry,
+                    "select * from entry
+                        where deleted_at is null
+                        and (published_at, entry_id) < ($1, $2)
+                        order by published_at desc, entry_id desc
+                        limit $3
+                    ",
+                    published_before,
+                    id_before,
+                    options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+                )
+                .fetch_all(pool)
+                .await
             } else {
                 sqlx::query_as!(
                     Entry,
                     "select * from entry
                         where deleted_at is null
+                        and published_at < $1
                         order by published_at desc
-                        limit $1
+                        limit $2
                     ",
+                    published_before,
                     options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
                 )
                 .fetch_all(pool)
                 .await
             }
+        } else {
+            sqlx::query_as!(
+                Entry,
+                "select * from entry
+                    where deleted_at is null
+                    order by published_at desc
+                    limit $1
+                ",
+                options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
+            )
+            .fetch_all(pool)
+            .await
         }
     }
 

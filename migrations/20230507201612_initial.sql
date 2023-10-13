@@ -90,3 +90,14 @@ create table if not exists "user_email_verification_token" (
     updated_at timestamptz
 );
 select trigger_updated_at('"user_email_verification_token"');
+
+create table if not exists "user_password_reset_token" (
+    token_id uuid primary key default uuid_generate_v4(),
+    user_id uuid not null references "users" (user_id) on delete cascade,
+    request_user_agent text,
+    request_ip inet not null,
+    expires_at timestamptz not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz
+);
+select trigger_updated_at('"user_password_reset_token"');

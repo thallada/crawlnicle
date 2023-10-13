@@ -31,6 +31,7 @@ pub fn login_form(props: LoginFormProps) -> Markup {
             @if let Some(general_error) = general_error {
                 span class="error" { (general_error) }
             }
+            a href="/forgot-password" class="forgot-password" { "Forgot password" }
         }
     }
 }

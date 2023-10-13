@@ -273,6 +273,11 @@ header.feed-header button {
   margin-left: auto;
 }
 
+.auth-form-grid .forgot-password {
+  grid-column: 2;
+  margin-left: auto;
+}
+
 .auth-form-grid span.error {
   font-size: 16px;
   grid-column: 2 / 3;

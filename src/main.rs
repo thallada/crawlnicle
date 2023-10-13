@@ -8,8 +8,7 @@ use axum::{
     Extension, Router,
 };
 use axum_login::{
-    axum_sessions::SessionLayer,
-    AuthLayer, PostgresStore, RequireAuthorizationLayer,
+    axum_sessions::SessionLayer, AuthLayer, PostgresStore, RequireAuthorizationLayer,
 };
 use bytes::Bytes;
 use clap::Parser;
@@ -17,7 +16,6 @@ use dotenvy::dotenv;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::SmtpTransport;
 use notify::Watcher;
-use rand::Rng;
 use reqwest::Client;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::watch::channel;
@@ -41,7 +39,7 @@ use uuid::Uuid;
 async fn serve(app: Router, addr: SocketAddr) -> Result<()> {
     debug!("listening on {}", addr);
     axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await?;
     Ok(())
 }
@@ -75,7 +73,7 @@ async fn main() -> Result<()> {
         .await?;
 
     let session_store = RedisSessionStore::new(config.redis_url.clone())?;
-    let session_layer = SessionLayer::new(session_store, &secret).with_secure(false);
+    let session_layer = SessionLayer::new(session_store, secret).with_secure(false);
     let user_store = PostgresStore::<User>::new(pool.clone())
         .with_query("select * from users where user_id = $1");
     let auth_layer = AuthLayer::new(user_store, &secret);
@@ -99,6 +97,8 @@ async fn main() -> Result<()> {
     );
     let _ = crawl_scheduler.bootstrap().await;
     let importer = ImporterHandle::new(pool.clone(), crawl_scheduler.clone(), imports.clone());
+
+    let ip_source_extension = config.ip_source.0.clone().into_extension();
 
     let addr = format!("{}:{}", &config.host, &config.port).parse()?;
     let mut app = Router::new()
@@ -129,6 +129,10 @@ async fn main() -> Result<()> {
         .route("/register", post(handlers::register::post))
         .route("/confirm-email", get(handlers::confirm_email::get))
         .route("/confirm-email", post(handlers::confirm_email::post))
+        .route("/forgot-password", get(handlers::forgot_password::get))
+        .route("/forgot-password", post(handlers::forgot_password::post))
+        .route("/reset-password", get(handlers::reset_password::get))
+        .route("/reset-password", post(handlers::reset_password::post))
         .nest_service("/static", ServeDir::new("static"))
         .with_state(AppState {
             pool,
@@ -144,7 +148,8 @@ async fn main() -> Result<()> {
         })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .layer(auth_layer)
-        .layer(session_layer);
+        .layer(session_layer)
+        .layer(ip_source_extension);
 
     if cfg!(debug_assertions) {
         debug!("starting livereload");

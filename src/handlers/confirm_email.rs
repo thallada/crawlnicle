@@ -1,7 +1,6 @@
 use axum::extract::{Query, State};
 use axum::response::Response;
 use axum::{Form, TypedHeader};
-use axum_login::SqlxStore;
 use lettre::SmtpTransport;
 use maud::html;
 use serde::Deserialize;

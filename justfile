@@ -53,5 +53,8 @@ watch-backend:
 watch:
  ./watch.sh
 
+reset:
+  sqlx database reset
+
 migrate:
   sqlx migrate run

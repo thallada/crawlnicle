@@ -57,7 +57,7 @@ pub async fn post(
         Ok(user) => user,
         Err(err) => {
             if let Error::NotFoundString(_, _) = err {
-                info!(email = login.email, "invalid enail");
+                info!(email = login.email, "invalid email");
                 return Ok(login_page(
                     hx_target,
                     layout,

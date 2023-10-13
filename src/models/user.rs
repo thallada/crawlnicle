@@ -34,6 +34,16 @@ pub struct CreateUser {
     pub name: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Default, Validate)]
+pub struct UpdateUserPassword {
+    #[validate(length(
+        min = 8,
+        max = 255,
+        message = "password must be between 8 and 255 characters long"
+    ))]
+    pub password: String,
+}
+
 impl AuthUser<Uuid> for User {
     fn get_id(&self) -> Uuid {
         self.user_id
@@ -129,6 +139,33 @@ impl User {
             }
             Error::Sqlx(error)
         })
+    }
+
+    pub async fn update_password(&self, pool: &PgPool, payload: UpdateUserPassword) -> Result<User> {
+        payload.validate()?;
+        let password_hash = hash_password(payload.password).await?;
+
+        Ok(sqlx::query_as!(
+            User,
+            r#"update users set
+                password_hash = $2
+            where
+                user_id = $1
+            returning
+                user_id,
+                email,
+                email_verified,
+                password_hash,
+                name,
+                created_at,
+                updated_at,
+                deleted_at
+            "#,
+            self.user_id,
+            password_hash,
+        )
+        .fetch_one(pool)
+        .await?)
     }
 }
 

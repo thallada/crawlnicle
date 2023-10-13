@@ -1,8 +1,6 @@
-use axum::response::Redirect;
+use crate::{models::user::AuthContext, htmx::HXRedirect};
 
-use crate::models::user::AuthContext;
-
-pub async fn get(mut auth: AuthContext) -> Redirect {
+pub async fn get(mut auth: AuthContext) -> HXRedirect {
     auth.logout().await;
-    Redirect::to("/")
+    HXRedirect::to("/").reload(true)
 }

@@ -38,6 +38,7 @@ builds
    createdb crawlnicle
    sudo -u postgres -i psql
    postgres=# ALTER DATABASE crawlnicle OWNER TO crawlnicle;
+   postgres=# ALTER USER crawlnicle CREATEDB;
    \password crawlnicle
 
    # Or, on Windows in PowerShell:
