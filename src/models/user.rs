@@ -1,7 +1,7 @@
 use axum_login::{secrecy::SecretVec, AuthUser, PostgresStore};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-use sqlx::{FromRow, PgPool};
+use sqlx::{Executor, FromRow, Postgres};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -55,7 +55,7 @@ impl AuthUser<Uuid> for User {
 }
 
 impl User {
-    pub async fn get(pool: &PgPool, user_id: Uuid) -> Result<User> {
+    pub async fn get(db: impl Executor<'_, Database = Postgres>, user_id: Uuid) -> Result<User> {
         sqlx::query_as!(
             User,
             r#"select
@@ -64,7 +64,7 @@ impl User {
             where user_id = $1"#,
             user_id
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::RowNotFound = error {
@@ -74,7 +74,10 @@ impl User {
         })
     }
 
-    pub async fn get_by_email(pool: &PgPool, email: String) -> Result<User> {
+    pub async fn get_by_email(
+        db: impl Executor<'_, Database = Postgres>,
+        email: String,
+    ) -> Result<User> {
         sqlx::query_as!(
             User,
             r#"select
@@ -83,7 +86,7 @@ impl User {
             where email = $1"#,
             email
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::RowNotFound = error {
@@ -93,7 +96,10 @@ impl User {
         })
     }
 
-    pub async fn create(pool: &PgPool, payload: CreateUser) -> Result<User> {
+    pub async fn create(
+        db: impl Executor<'_, Database = Postgres>,
+        payload: CreateUser,
+    ) -> Result<User> {
         payload.validate()?;
         let password_hash = hash_password(payload.password).await?;
 
@@ -117,11 +123,14 @@ impl User {
             password_hash,
             payload.name
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await?)
     }
 
-    pub async fn verify_email(pool: &PgPool, user_id: Uuid) -> Result<User> {
+    pub async fn verify_email(
+        db: impl Executor<'_, Database = Postgres>,
+        user_id: Uuid,
+    ) -> Result<User> {
         sqlx::query_as!(
             User,
             r#"update users set
@@ -131,7 +140,7 @@ impl User {
             "#,
             user_id
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::RowNotFound = error {
@@ -141,7 +150,11 @@ impl User {
         })
     }
 
-    pub async fn update_password(&self, pool: &PgPool, payload: UpdateUserPassword) -> Result<User> {
+    pub async fn update_password(
+        &self,
+        db: impl Executor<'_, Database = Postgres>,
+        payload: UpdateUserPassword,
+    ) -> Result<User> {
         payload.validate()?;
         let password_hash = hash_password(payload.password).await?;
 
@@ -164,7 +177,7 @@ impl User {
             self.user_id,
             password_hash,
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await?)
     }
 }

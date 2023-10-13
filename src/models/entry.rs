@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{Executor, Postgres};
 use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
 
@@ -44,9 +44,9 @@ pub struct GetEntriesOptions {
 }
 
 impl Entry {
-    pub async fn get(pool: &PgPool, entry_id: Uuid) -> Result<Entry> {
+    pub async fn get(db: impl Executor<'_, Database = Postgres>, entry_id: Uuid) -> Result<Entry> {
         sqlx::query_as!(Entry, "select * from entry where entry_id = $1", entry_id)
-            .fetch_one(pool)
+            .fetch_one(db)
             .await
             .map_err(|error| {
                 if let sqlx::error::Error::RowNotFound = error {
@@ -56,7 +56,10 @@ impl Entry {
             })
     }
 
-    pub async fn get_all(pool: &PgPool, options: &GetEntriesOptions) -> sqlx::Result<Vec<Entry>> {
+    pub async fn get_all(
+        db: impl Executor<'_, Database = Postgres>,
+        options: &GetEntriesOptions,
+    ) -> sqlx::Result<Vec<Entry>> {
         if let Some(feed_id) = options.feed_id {
             if let Some(published_before) = options.published_before {
                 if let Some(id_before) = options.id_before {
@@ -74,7 +77,7 @@ impl Entry {
                         id_before,
                         options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
                     )
-                    .fetch_all(pool)
+                    .fetch_all(db)
                     .await
                 } else {
                     sqlx::query_as!(
@@ -90,7 +93,7 @@ impl Entry {
                         published_before,
                         options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
                     )
-                    .fetch_all(pool)
+                    .fetch_all(db)
                     .await
                 }
             } else {
@@ -105,7 +108,7 @@ impl Entry {
                     feed_id,
                     options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
                 )
-                .fetch_all(pool)
+                .fetch_all(db)
                 .await
             }
         } else if let Some(published_before) = options.published_before {
@@ -122,7 +125,7 @@ impl Entry {
                     id_before,
                     options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
                 )
-                .fetch_all(pool)
+                .fetch_all(db)
                 .await
             } else {
                 sqlx::query_as!(
@@ -136,7 +139,7 @@ impl Entry {
                     published_before,
                     options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
                 )
-                .fetch_all(pool)
+                .fetch_all(db)
                 .await
             }
         } else {
@@ -149,12 +152,15 @@ impl Entry {
                 ",
                 options.limit.unwrap_or(DEFAULT_ENTRIES_PAGE_SIZE)
             )
-            .fetch_all(pool)
+            .fetch_all(db)
             .await
         }
     }
 
-    pub async fn create(pool: &PgPool, payload: CreateEntry) -> Result<Entry> {
+    pub async fn create(
+        db: impl Executor<'_, Database = Postgres>,
+        payload: CreateEntry,
+    ) -> Result<Entry> {
         payload.validate()?;
         sqlx::query_as!(
             Entry,
@@ -169,7 +175,7 @@ impl Entry {
             payload.feed_id,
             payload.published_at,
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::Database(ref psql_error) = error {
@@ -181,7 +187,10 @@ impl Entry {
         })
     }
 
-    pub async fn upsert(pool: &PgPool, payload: CreateEntry) -> Result<Entry> {
+    pub async fn upsert(
+        db: impl Executor<'_, Database = Postgres>,
+        payload: CreateEntry,
+    ) -> Result<Entry> {
         payload.validate()?;
         sqlx::query_as!(
             Entry,
@@ -200,7 +209,7 @@ impl Entry {
             payload.feed_id,
             payload.published_at,
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::Database(ref psql_error) = error {
@@ -212,7 +221,10 @@ impl Entry {
         })
     }
 
-    pub async fn bulk_create(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<Vec<Entry>> {
+    pub async fn bulk_create(
+        db: impl Executor<'_, Database = Postgres>,
+        payload: Vec<CreateEntry>,
+    ) -> Result<Vec<Entry>> {
         let mut titles = Vec::with_capacity(payload.len());
         let mut urls = Vec::with_capacity(payload.len());
         let mut descriptions: Vec<Option<String>> = Vec::with_capacity(payload.len());
@@ -241,7 +253,7 @@ impl Entry {
             feed_ids.as_slice(),
             published_ats.as_slice(),
         )
-        .fetch_all(pool)
+        .fetch_all(db)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::Database(ref psql_error) = error {
@@ -253,7 +265,10 @@ impl Entry {
         })
     }
 
-    pub async fn bulk_upsert(pool: &PgPool, payload: Vec<CreateEntry>) -> Result<Vec<Entry>> {
+    pub async fn bulk_upsert(
+        db: impl Executor<'_, Database = Postgres>,
+        payload: Vec<CreateEntry>,
+    ) -> Result<Vec<Entry>> {
         let mut titles = Vec::with_capacity(payload.len());
         let mut urls = Vec::with_capacity(payload.len());
         let mut descriptions: Vec<Option<String>> = Vec::with_capacity(payload.len());
@@ -286,7 +301,7 @@ impl Entry {
             feed_ids.as_slice(),
             published_ats.as_slice(),
         )
-        .fetch_all(pool)
+        .fetch_all(db)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::Database(ref psql_error) = error {
@@ -298,7 +313,10 @@ impl Entry {
         })
     }
 
-    pub async fn update(pool: &PgPool, payload: Entry) -> Result<Entry> {
+    pub async fn update(
+        db: impl Executor<'_, Database = Postgres>,
+        payload: Entry,
+    ) -> Result<Entry> {
         sqlx::query_as!(
             Entry,
             "update entry set
@@ -321,7 +339,7 @@ impl Entry {
             payload.last_modified_header,
             payload.published_at,
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::Database(ref psql_error) = error {
@@ -333,12 +351,12 @@ impl Entry {
         })
     }
 
-    pub async fn delete(pool: &PgPool, entry_id: Uuid) -> Result<()> {
+    pub async fn delete(db: impl Executor<'_, Database = Postgres>, entry_id: Uuid) -> Result<()> {
         sqlx::query!(
             "update entry set deleted_at = now() where entry_id = $1",
             entry_id
         )
-        .execute(pool)
+        .execute(db)
         .await?;
         Ok(())
     }

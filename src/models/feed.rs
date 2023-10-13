@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, PgPool, postgres::PgQueryResult};
+use sqlx::{postgres::PgQueryResult, Executor, FromRow, Postgres};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -127,7 +127,7 @@ pub struct GetFeedsOptions {
 }
 
 impl Feed {
-    pub async fn get(pool: &PgPool, feed_id: Uuid) -> Result<Feed> {
+    pub async fn get(db: impl Executor<'_, Database = Postgres>, feed_id: Uuid) -> Result<Feed> {
         sqlx::query_as!(
             Feed,
             // Unable to SELECT * here due to https://github.com/launchbadge/sqlx/issues/1004
@@ -150,7 +150,7 @@ impl Feed {
             from feed where feed_id = $1"#,
             feed_id
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::RowNotFound = error {
@@ -160,7 +160,10 @@ impl Feed {
         })
     }
 
-    pub async fn get_all(pool: &PgPool, options: &GetFeedsOptions) -> sqlx::Result<Vec<Feed>> {
+    pub async fn get_all(
+        db: impl Executor<'_, Database = Postgres>,
+        options: &GetFeedsOptions,
+    ) -> sqlx::Result<Vec<Feed>> {
         // TODO: make sure there are indices for all of these sort options
         match options.sort.as_ref().unwrap_or(&GetFeedsSort::CreatedAt) {
             GetFeedsSort::Title => {
@@ -192,7 +195,7 @@ impl Feed {
                         options.before_id.unwrap_or(Uuid::nil()),
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
-                    .fetch_all(pool)
+                    .fetch_all(db)
                     .await
                 } else {
                     sqlx::query_as!(
@@ -219,9 +222,8 @@ impl Feed {
                         "#,
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
-                    .fetch_all(pool)
+                    .fetch_all(db)
                     .await
-
                 }
             }
             GetFeedsSort::CreatedAt => {
@@ -253,7 +255,7 @@ impl Feed {
                         options.before_id.unwrap_or(Uuid::nil()),
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
-                    .fetch_all(pool)
+                    .fetch_all(db)
                     .await
                 } else {
                     sqlx::query_as!(
@@ -280,9 +282,8 @@ impl Feed {
                         "#,
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
-                    .fetch_all(pool)
+                    .fetch_all(db)
                     .await
-
                 }
             }
             GetFeedsSort::LastCrawledAt => {
@@ -314,7 +315,7 @@ impl Feed {
                         options.before_id.unwrap_or(Uuid::nil()),
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
-                    .fetch_all(pool)
+                    .fetch_all(db)
                     .await
                 } else {
                     sqlx::query_as!(
@@ -341,9 +342,8 @@ impl Feed {
                         "#,
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
-                    .fetch_all(pool)
+                    .fetch_all(db)
                     .await
-
                 }
             }
             GetFeedsSort::LastEntryPublishedAt => {
@@ -375,7 +375,7 @@ impl Feed {
                         options.before_id.unwrap_or(Uuid::nil()),
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
-                    .fetch_all(pool)
+                    .fetch_all(db)
                     .await
                 } else {
                     sqlx::query_as!(
@@ -402,15 +402,17 @@ impl Feed {
                         "#,
                         options.limit.unwrap_or(DEFAULT_FEEDS_PAGE_SIZE),
                     )
-                    .fetch_all(pool)
+                    .fetch_all(db)
                     .await
-
                 }
             }
         }
     }
 
-    pub async fn create(pool: &PgPool, payload: CreateFeed) -> Result<Feed> {
+    pub async fn create(
+        db: impl Executor<'_, Database = Postgres>,
+        payload: CreateFeed,
+    ) -> Result<Feed> {
         payload.validate()?;
         Ok(sqlx::query_as!(
             Feed,
@@ -438,11 +440,14 @@ impl Feed {
             payload.url,
             payload.description
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await?)
     }
 
-    pub async fn upsert(pool: &PgPool, payload: UpsertFeed) -> Result<Feed> {
+    pub async fn upsert(
+        db: impl Executor<'_, Database = Postgres>,
+        payload: UpsertFeed,
+    ) -> Result<Feed> {
         payload.validate()?;
         Ok(sqlx::query_as!(
             Feed,
@@ -476,11 +481,15 @@ impl Feed {
             payload.feed_type as Option<FeedType>,
             payload.description
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await?)
     }
 
-    pub async fn update(pool: &PgPool, feed_id: Uuid, payload: UpdateFeed) -> Result<Feed> {
+    pub async fn update(
+        db: impl Executor<'_, Database = Postgres>,
+        feed_id: Uuid,
+        payload: UpdateFeed,
+    ) -> Result<Feed> {
         payload.validate()?;
         let mut query = sqlx::QueryBuilder::new("UPDATE feed SET ");
 
@@ -520,20 +529,24 @@ impl Feed {
 
         let query = query.build_query_as();
 
-        Ok(query.fetch_one(pool).await?)
+        Ok(query.fetch_one(db).await?)
     }
 
-    pub async fn delete(pool: &PgPool, feed_id: Uuid) -> Result<()> {
+    pub async fn delete(db: impl Executor<'_, Database = Postgres>, feed_id: Uuid) -> Result<()> {
         sqlx::query!(
             "update feed set deleted_at = now() where feed_id = $1",
             feed_id
         )
-        .execute(pool)
+        .execute(db)
         .await?;
         Ok(())
     }
 
-    pub async fn update_crawl_error(pool: &PgPool, feed_id: Uuid, last_crawl_error: String) -> Result<PgQueryResult> {
+    pub async fn update_crawl_error(
+        db: impl Executor<'_, Database = Postgres>,
+        feed_id: Uuid,
+        last_crawl_error: String,
+    ) -> Result<PgQueryResult> {
         Ok(sqlx::query!(
             r#"update feed set
                 last_crawl_error = $2
@@ -541,11 +554,11 @@ impl Feed {
             feed_id,
             last_crawl_error,
         )
-        .execute(pool)
+        .execute(db)
         .await?)
     }
 
-    pub async fn save(&self, pool: &PgPool) -> Result<Feed> {
+    pub async fn save(&self, db: impl Executor<'_, Database = Postgres>) -> Result<Feed> {
         Ok(sqlx::query_as!(
             Feed,
             r#"update feed set
@@ -588,7 +601,7 @@ impl Feed {
             self.last_crawled_at,
             self.last_entry_published_at,
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await?)
     }
 }

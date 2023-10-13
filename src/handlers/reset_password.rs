@@ -241,11 +241,11 @@ pub async fn post(
         }
     };
     info!(user_id = %user.user_id, "user exists with verified email, resetting password");
-    // TODO: do both in transaction
-    UserPasswordResetToken::delete(&pool, reset_password.token).await?;
+    let mut tx = pool.begin().await?;
+    UserPasswordResetToken::delete(tx.as_mut(), reset_password.token).await?;
     let user = match user
         .update_password(
-            &pool,
+            tx.as_mut(),
             UpdateUserPassword {
                 password: reset_password.password,
             },
@@ -289,6 +289,7 @@ pub async fn post(
         ip.into(),
         user_agent.map(|ua| ua.to_string()),
     );
+    tx.commit().await?;
     Ok(layout
         .with_subtitle("reset password")
         .targeted(hx_target)

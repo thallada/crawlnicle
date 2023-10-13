@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{Executor, Postgres};
 use uuid::Uuid;
 
 use crate::error::{Error, Result};
@@ -31,7 +31,10 @@ impl UserPasswordResetToken {
         Utc::now() > self.expires_at
     }
 
-    pub async fn get(pool: &PgPool, token_id: Uuid) -> Result<UserPasswordResetToken> {
+    pub async fn get(
+        pool: impl Executor<'_, Database = Postgres>,
+        token_id: Uuid,
+    ) -> Result<UserPasswordResetToken> {
         sqlx::query_as!(
             UserPasswordResetToken,
             r#"select
@@ -51,7 +54,7 @@ impl UserPasswordResetToken {
     }
 
     pub async fn create(
-        pool: &PgPool,
+        pool: impl Executor<'_, Database = Postgres>,
         payload: CreatePasswordResetToken,
     ) -> Result<UserPasswordResetToken> {
         Ok(sqlx::query_as!(
@@ -72,7 +75,7 @@ impl UserPasswordResetToken {
     }
 
     pub async fn delete(
-        pool: &PgPool,
+        pool: impl Executor<'_, Database = Postgres>,
         token_id: Uuid,
     ) -> Result<()> {
         sqlx::query!(

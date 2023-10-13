@@ -71,13 +71,9 @@ pub async fn post(
     layout: Layout,
     Form(forgot_password): Form<ForgotPassword>,
 ) -> Result<Response> {
-    dbg!(&ip);
-    dbg!(&user_agent);
-    dbg!(&forgot_password.email);
     let user: User = match User::get_by_email(&pool, forgot_password.email.clone()).await {
         Ok(user) => user,
         Err(err) => {
-            dbg!(&err);
             if let Error::NotFoundString(_, _) = err {
                 info!(email = forgot_password.email, "invalid email");
                 return Ok(layout
