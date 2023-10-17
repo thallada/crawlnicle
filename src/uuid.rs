@@ -1,6 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -99,6 +99,10 @@ pub fn base62_decode(input: &str) -> Result<u128> {
     let base = BASE62_CHARS.len() as u128;
     let mut number = 0u128;
 
+    if input.is_empty() {
+        return Err(anyhow!("cannot decode an empty string"));
+    }
+
     for &byte in input.as_bytes() {
         if let Some(value) = BASE62_CHARS.iter().position(|&ch| ch == byte) {
             number = number.checked_mul(base).context("u128 overflow")? + value as u128;
@@ -153,5 +157,12 @@ mod tests {
         let decoded_uuid = Uuid::from_u128(decoded);
 
         assert_eq!(uuid, decoded_uuid);
+    }
+
+    #[test]
+    fn errors_if_encoded_string_is_empty() {
+        let decode_result = base62_decode("");
+
+        assert!(decode_result.is_err());
     }
 }
