@@ -33,21 +33,23 @@ impl FromStr for IpSource {
 pub struct Config {
     #[clap(long, env)]
     pub database_url: String,
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "5")]
     pub database_max_connections: u32,
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "redis://localhost")]
     pub redis_url: String,
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "5")]
+    pub redis_pool_size: usize,
+    #[clap(long, env, default_value = "127.0.0.1")]
     pub host: String,
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "3000")]
     pub port: u16,
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "http://localhost:3000")]
     pub public_url: Url,
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "crawlnicle")]
     pub title: String,
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "1000000")]
     pub max_mem_log_size: usize,
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "./content")]
     pub content_dir: String,
     #[clap(long, env)]
     pub smtp_server: String,
@@ -55,10 +57,10 @@ pub struct Config {
     pub smtp_user: String,
     #[clap(long, env)]
     pub smtp_password: String,
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "crawlnicle <no-reply@mail.crawlnicle.com>")]
     pub email_from: Mailbox,
     #[clap(long, env)]
     pub session_secret: String,
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "ConnectInfo")]
     pub ip_source: IpSource,
 }

@@ -16,7 +16,7 @@ ammonia = "3.3.0"
 ansi-to-html = "0.1"
 anyhow = "1"
 argon2 = "0.5"
-async-redis-session = "0.2"
+async-fred-session = "0.1"
 axum = { version = "0.6", features = ["form", "headers", "multipart", "query"] }
 axum-client-ip = "0.4"
 # waiting for new axum-login release which will support sqlx v. 0.7+

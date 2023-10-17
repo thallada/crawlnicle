@@ -1,7 +1,7 @@
 use std::{collections::HashMap, net::SocketAddr, path::Path, sync::Arc};
 
 use anyhow::Result;
-use async_redis_session::RedisSessionStore;
+use async_fred_session::{RedisSessionStore, fred::{pool::RedisPool, types::RedisConfig}};
 use axum::{
     response::IntoResponse,
     routing::{get, post},
@@ -72,11 +72,16 @@ async fn main() -> Result<()> {
         .connect(&config.database_url)
         .await?;
 
-    let session_store = RedisSessionStore::new(config.redis_url.clone())?;
+    let redis_config = RedisConfig::from_url(&config.redis_url)?;
+    let redis_pool = RedisPool::new(redis_config, None, None, config.redis_pool_size)?;
+    redis_pool.connect();
+    redis_pool.wait_for_connect().await?;
+
+    let session_store = RedisSessionStore::from_pool(redis_pool, Some("async-fred-session/".into()));
     let session_layer = SessionLayer::new(session_store, secret).with_secure(false);
     let user_store = PostgresStore::<User>::new(pool.clone())
         .with_query("select * from users where user_id = $1");
-    let auth_layer = AuthLayer::new(user_store, &secret);
+    let auth_layer = AuthLayer::new(user_store, secret);
 
     let creds = Credentials::new(config.smtp_user.clone(), config.smtp_password.clone());
 

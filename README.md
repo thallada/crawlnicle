@@ -47,6 +47,7 @@ builds
    & 'C:\Program Files\PostgreSQL\13\bin\createdb.exe' -U postgres crawlnicle
    & 'C:\Program Files\PostgreSQL\13\bin\psql.exe' -U postgres
    postgres=# ALTER DATABASE crawlnicle OWNER TO crawlnicle;
+   postgres=# ALTER USER crawlnicle CREATEDB;
    \password crawlnicle
    ```
 
@@ -69,6 +70,7 @@ builds
    SMTP_PASSWORD=password
    EMAIL_FROM="crawlnicle <no-reply@mail.crawlnicle.com>"
    SESSION_SECRET=64-bytes-of-secret
+   IP_SOURCE=ConnectInfo
    ```
 
 1. Run `just migrate` (or `sqlx migrate run`) which will run all the database
