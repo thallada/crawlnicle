@@ -18,6 +18,11 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
+    - name: Cache Cargo binaries
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/bin
+
     - name: Install sqlx-cli
       run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
 
