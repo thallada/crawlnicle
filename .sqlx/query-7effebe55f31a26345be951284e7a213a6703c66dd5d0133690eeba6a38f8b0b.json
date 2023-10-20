@@ -1,0 +1,84 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select * from entry\n                        where deleted_at is null\n                        and (published_at, entry_id) < ($1, $2)\n                        order by published_at desc, entry_id desc\n                        limit $3\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "entry_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "feed_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "etag_header",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_modified_header",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "published_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "7effebe55f31a26345be951284e7a213a6703c66dd5d0133690eeba6a38f8b0b"
+}

@@ -61,3 +61,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.4", features = ["serde"] }
 url = "2.4"
 validator = { version = "0.16", features = ["derive"] }
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3

@@ -5,4 +5,4 @@
 /static/css/*
 /static/img/*
 .frontend-built
-/content
+/content/*

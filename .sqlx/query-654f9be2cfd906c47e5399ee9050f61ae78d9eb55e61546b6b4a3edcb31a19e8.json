@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update entry set deleted_at = now() where entry_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "654f9be2cfd906c47e5399ee9050f61ae78d9eb55e61546b6b4a3edcb31a19e8"
+}

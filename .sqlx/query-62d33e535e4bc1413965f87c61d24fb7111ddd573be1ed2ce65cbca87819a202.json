@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into entry (\n                title, url, description, feed_id, published_at\n            ) select * from unnest($1::text[], $2::text[], $3::text[], $4::uuid[], $5::timestamptz[])\n            returning *",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "entry_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "feed_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "etag_header",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_modified_header",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "published_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "UuidArray",
+        "TimestamptzArray"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "62d33e535e4bc1413965f87c61d24fb7111ddd573be1ed2ce65cbca87819a202"
+}

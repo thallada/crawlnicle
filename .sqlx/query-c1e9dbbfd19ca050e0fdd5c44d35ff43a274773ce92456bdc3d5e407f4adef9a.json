@@ -1,0 +1,138 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update feed set\n                title = $2,\n                url = $3,\n                type = $4,\n                description = $5,\n                crawl_interval_minutes = $6,\n                last_crawl_error = $7,\n                etag_header = $8,\n                last_modified_header = $9,\n                last_crawled_at = $10,\n                last_entry_published_at = $11\n            where feed_id = $1\n            returning\n                feed_id,\n                title,\n                url,\n                type as \"feed_type: FeedType\",\n                description,\n                crawl_interval_minutes,\n                last_crawl_error,\n                etag_header,\n                last_modified_header,\n                last_crawled_at,\n                last_entry_published_at,\n                created_at,\n                updated_at,\n                deleted_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "feed_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "feed_type: FeedType",
+        "type_info": {
+          "Custom": {
+            "name": "feed_type",
+            "kind": {
+              "Enum": [
+                "atom",
+                "json",
+                "rss0",
+                "rss1",
+                "rss2",
+                "unknown"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "crawl_interval_minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_crawl_error",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "etag_header",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "last_modified_header",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "last_crawled_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_entry_published_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Varchar",
+        {
+          "Custom": {
+            "name": "feed_type",
+            "kind": {
+              "Enum": [
+                "atom",
+                "json",
+                "rss0",
+                "rss1",
+                "rss2",
+                "unknown"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "c1e9dbbfd19ca050e0fdd5c44d35ff43a274773ce92456bdc3d5e407f4adef9a"
+}

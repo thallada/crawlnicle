@@ -1,0 +1,116 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n                            feed_id,\n                            title,\n                            url,\n                            type as \"feed_type: FeedType\",\n                            description,\n                            crawl_interval_minutes,\n                            last_crawl_error,\n                            etag_header,\n                            last_modified_header,\n                            last_crawled_at,\n                            last_entry_published_at,\n                            created_at,\n                            updated_at,\n                            deleted_at\n                        from feed\n                        where deleted_at is null\n                        and (created_at, feed_id) < ($1, $2)\n                        order by created_at desc, feed_id desc\n                        limit $3\n                        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "feed_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "feed_type: FeedType",
+        "type_info": {
+          "Custom": {
+            "name": "feed_type",
+            "kind": {
+              "Enum": [
+                "atom",
+                "json",
+                "rss0",
+                "rss1",
+                "rss2",
+                "unknown"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "crawl_interval_minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_crawl_error",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "etag_header",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "last_modified_header",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "last_crawled_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_entry_published_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "258f24351475ae041eb679f966978ea066e467530a5ba2e07ad8feb5f91d5422"
+}

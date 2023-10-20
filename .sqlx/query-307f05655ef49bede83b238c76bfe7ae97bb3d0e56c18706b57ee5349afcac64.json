@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update feed set\n                last_crawl_error = $2\n            where feed_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "307f05655ef49bede83b238c76bfe7ae97bb3d0e56c18706b57ee5349afcac64"
+}

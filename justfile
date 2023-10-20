@@ -41,7 +41,7 @@ watch-frontend: install-frontend
     -s 'just build-dev-frontend'
 
 watch-backend:
-  cargo watch \
+  mold -run cargo watch \
     --ignore 'logs/*' \
     --ignore 'static/*' \
     --ignore 'frontend/*' \
@@ -58,3 +58,6 @@ reset:
 
 migrate:
   sqlx migrate run
+
+prepare:
+  cargo sqlx prepare

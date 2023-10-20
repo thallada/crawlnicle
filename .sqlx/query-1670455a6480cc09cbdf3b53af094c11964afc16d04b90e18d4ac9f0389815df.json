@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into entry (\n                title, url, description, feed_id, published_at\n            ) values (\n                $1, $2, $3, $4, $5\n            ) returning *",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "entry_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "feed_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "etag_header",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_modified_header",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "published_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Varchar",
+        "Text",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "1670455a6480cc09cbdf3b53af094c11964afc16d04b90e18d4ac9f0389815df"
+}

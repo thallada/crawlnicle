@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update feed set deleted_at = now() where feed_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "90e98a593dc2ba0a0634bebd3a5b8ca105704203a11012ec8c2bbcdcfbd34703"
+}
