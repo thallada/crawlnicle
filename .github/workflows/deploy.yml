@@ -59,4 +59,4 @@ jobs:
       run: rsync -avz ./static/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/crawlnicle/crawlnicle/static/
 
     - name: Deploy backend with rsync
-      run: rsync -avz ./target/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/crawlnicle/crawlnicle/target/
+      run: rsync -avz ./target/release/crawlnicle ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/crawlnicle/crawlnicle/target/release/crawlnicle
