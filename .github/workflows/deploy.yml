@@ -18,6 +18,9 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
+    - name: Install sqlx-cli
+      run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
+
     - name: Check sqlx prepare files
       run: cargo sqlx prepare --check
 
