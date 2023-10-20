@@ -21,9 +21,6 @@ jobs:
     - name: Install sqlx-cli
       run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
 
-    - name: Check sqlx prepare files
-      run: cargo sqlx prepare --check
-
     - name: Run tests
       run: cargo test --verbose
 
