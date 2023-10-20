@@ -1,0 +1,31 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - run: rustup toolchain install stable --profile minimal
+    - uses: Swatinem/rust-cache@v2
+    - name: Build
+      run: cargo build --release --verbose
+    - name: Run tests
+      run: cargo test --verbose
+    - name: Install SSH Key
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+    - name: Adding Known Hosts
+      run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+    - name: Deploy with rsync
+      run: rsync -avz ./target/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/crawlnicle/crawlnicle/target/
