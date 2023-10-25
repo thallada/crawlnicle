@@ -60,3 +60,7 @@ jobs:
 
     - name: Deploy backend with rsync
       run: rsync -avz ./target/release/crawlnicle ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/crawlnicle/crawlnicle/target/release/crawlnicle
+
+    # TODO: fancy blue/green deployments
+    - name: Restart the server
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'sudo /usr/bin/systemctl restart crawlnicle.service'
