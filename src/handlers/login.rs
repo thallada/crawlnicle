@@ -9,7 +9,7 @@ use tracing::info;
 
 use crate::auth::verify_password;
 use crate::error::{Error, Result};
-use crate::htmx::{HXRedirect, HXTarget};
+use crate::htmx::{HXRedirect, HXTarget, HXRequest};
 use crate::partials::login_form::{login_form, LoginFormProps};
 use crate::{
     models::user::{AuthContext, User},
@@ -50,6 +50,7 @@ pub async fn post(
     State(pool): State<PgPool>,
     mut auth: AuthContext,
     hx_target: Option<TypedHeader<HXTarget>>,
+    hx_request: Option<TypedHeader<HXRequest>>,
     layout: Layout,
     Form(login): Form<Login>,
 ) -> Result<Response> {
@@ -91,5 +92,8 @@ pub async fn post(
     auth.login(&user)
         .await
         .map_err(|_| Error::InternalServerError)?;
-    Ok(HXRedirect::to("/").reload(true).into_response())
+    Ok(HXRedirect::to("/")
+        .is_htmx(hx_request.is_some())
+        .reload(true)
+        .into_response())
 }

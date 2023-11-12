@@ -58,8 +58,10 @@ pub async fn get(
 #[derive(Deserialize)]
 pub struct AddFeed {
     url: String,
+    #[serde(default)]
     #[serde_as(as = "NoneAsEmptyString")]
     title: Option<String>,
+    #[serde(default)]
     #[serde_as(as = "NoneAsEmptyString")]
     description: Option<String>,
 }

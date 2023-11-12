@@ -1,4 +1,4 @@
-use axum::response::{IntoResponse, Response};
+use axum::response::{IntoResponse, Redirect, Response};
 use headers::{self, Header};
 use http::header::{HeaderName, HeaderValue};
 use http::StatusCode;
@@ -12,13 +12,14 @@ pub const HX_REQUEST: HeaderName = HeaderName::from_static("hx-request");
 #[allow(clippy::declare_interior_mutable_const)]
 pub const HX_TARGET: HeaderName = HeaderName::from_static("hx-target");
 
-/// Sets the HX-Location header so that HTMX redirects to the given URI. Unlike 
-/// axum::response::Redirect this does not return a 300-level status code (instead, a 200 status 
+/// Sets the HX-Location header so that HTMX redirects to the given URI. Unlike
+/// axum::response::Redirect this does not return a 300-level status code (instead, a 200 status
 /// code) so that HTMX can see the HX-Location header before the browser handles the redirect.
 #[derive(Debug, Clone)]
 pub struct HXRedirect {
     location: HeaderValue,
     reload: bool,
+    is_htmx_request: bool,
 }
 
 impl HXRedirect {
@@ -26,6 +27,7 @@ impl HXRedirect {
         Self {
             location: HeaderValue::try_from(uri).expect("URI isn't a valid header value"),
             reload: false,
+            is_htmx_request: true,
         }
     }
 
@@ -33,22 +35,23 @@ impl HXRedirect {
         self.reload = reload;
         self
     }
+
+    pub fn is_htmx(mut self, is_htmx: bool) -> Self {
+        self.is_htmx_request = is_htmx;
+        self
+    }
 }
 
 impl IntoResponse for HXRedirect {
     fn into_response(self) -> Response {
-        if self.reload {
-            (
-                StatusCode::OK,
-                [(HX_REDIRECT, self.location)],
-            )
-                .into_response()
+        if self.is_htmx_request {
+            if self.reload {
+                (StatusCode::OK, [(HX_REDIRECT, self.location)]).into_response()
+            } else {
+                (StatusCode::OK, [(HX_LOCATION, self.location)]).into_response()
+            }
         } else {
-            (
-                StatusCode::OK,
-                [(HX_LOCATION, self.location)],
-            )
-                .into_response()
+            Redirect::to(self.location.to_str().unwrap()).into_response()
         }
     }
 }
@@ -72,9 +75,7 @@ impl Header for HXRequest {
     where
         I: Iterator<Item = &'i HeaderValue>,
     {
-        let value = values
-            .next()
-            .ok_or_else(headers::Error::invalid)?;
+        let value = values.next().ok_or_else(headers::Error::invalid)?;
 
         if value == "true" {
             Ok(HXRequest(true))
@@ -89,11 +90,7 @@ impl Header for HXRequest {
     where
         E: Extend<HeaderValue>,
     {
-        let s = if self.0 {
-            "true"
-        } else {
-            "false"
-        };
+        let s = if self.0 { "true" } else { "false" };
 
         let value = HeaderValue::from_static(s);
 
@@ -116,18 +113,17 @@ impl Header for HXTarget {
     where
         I: Iterator<Item = &'i HeaderValue>,
     {
-        let value = values
-            .next()
-            .ok_or_else(headers::Error::invalid)?;
+        let value = values.next().ok_or_else(headers::Error::invalid)?;
 
-        Ok(HXTarget{ target: value.clone() })
+        Ok(HXTarget {
+            target: value.clone(),
+        })
     }
 
     fn encode<E>(&self, values: &mut E)
     where
         E: Extend<HeaderValue>,
     {
-
         values.extend(std::iter::once(self.target.clone()));
     }
 }
