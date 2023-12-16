@@ -1,5 +1,3 @@
-#!/usr/bin/env just --justfile
-
 build: build-frontend
   cargo build --release
 

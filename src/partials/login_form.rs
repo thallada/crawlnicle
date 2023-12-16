@@ -16,14 +16,35 @@ pub fn login_form(props: LoginFormProps) -> Markup {
         general_error,
     } = props;
     html! {
-        form action="/login" method="post" class="auth-form-grid" {
+        form
+            action="/login"
+            method="post"
+            hx-post="/login"
+            hx-target="#login-form"
+            hx-swap="outerHTML"
+            id="login-form"
+            class="auth-form-grid"
+        {
             label for="email" { "Email" }
-            input type="email" name="email" id="email" placeholder="Email" value=(email.unwrap_or_default()) required;
+            input
+                type="email"
+                name="email"
+                id="email"
+                placeholder="Email"
+                value=(email.unwrap_or_default())
+                required;
             @if let Some(email_error) = email_error {
                 span class="error" { (email_error) }
             }
             label for="email" { "Password" }
-            input type="password" name="password" id="password" placeholder="Password" minlength="8" maxlength="255" required;
+            input
+                type="password"
+                name="password"
+                id="password"
+                placeholder="Password"
+                minlength="8"
+                maxlength="255"
+                required;
             @if let Some(password_error) = password_error {
                 span class="error" { (password_error) }
             }
@@ -31,7 +52,9 @@ pub fn login_form(props: LoginFormProps) -> Markup {
             @if let Some(general_error) = general_error {
                 span class="error" { (general_error) }
             }
-            a href="/forgot-password" class="forgot-password" { "Forgot password" }
+            a href="/forgot-password" hx-target="#main-content" hx-swap="unset" class="forgot-password" {
+                "Forgot password"
+            }
         }
     }
 }

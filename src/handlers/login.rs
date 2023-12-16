@@ -1,6 +1,7 @@
 use axum::response::{IntoResponse, Response};
 use axum::TypedHeader;
 use axum::{extract::State, Form};
+use http::HeaderValue;
 use maud::html;
 use serde::Deserialize;
 use serde_with::serde_as;
@@ -9,7 +10,7 @@ use tracing::info;
 
 use crate::auth::verify_password;
 use crate::error::{Error, Result};
-use crate::htmx::{HXRedirect, HXTarget, HXRequest};
+use crate::htmx::{HXRedirect, HXRequest, HXTarget};
 use crate::partials::login_form::{login_form, LoginFormProps};
 use crate::{
     models::user::{AuthContext, User},
@@ -28,6 +29,11 @@ pub fn login_page(
     layout: Layout,
     form_props: LoginFormProps,
 ) -> Response {
+    if let Some(hx_target) = &hx_target {
+        if hx_target.target == HeaderValue::from_static("login-form") {
+            return login_form(form_props).into_response();
+        }
+    }
     layout
         .with_subtitle("login")
         .targeted(hx_target)
