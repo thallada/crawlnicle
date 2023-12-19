@@ -1,6 +1,7 @@
 use axum::response::{IntoResponse, Response};
 use axum::TypedHeader;
 use axum::{extract::State, Form};
+use http::HeaderValue;
 use lettre::SmtpTransport;
 use maud::html;
 use serde::Deserialize;
@@ -25,8 +26,17 @@ pub struct Register {
     pub name: Option<String>,
 }
 
-pub async fn get(hx_target: Option<TypedHeader<HXTarget>>, layout: Layout) -> Result<Response> {
-    Ok(layout
+pub fn register_page(
+    hx_target: Option<TypedHeader<HXTarget>>,
+    layout: Layout,
+    form_props: RegisterFormProps,
+) -> Response {
+    if let Some(hx_target) = &hx_target {
+        if hx_target.target == HeaderValue::from_static("register-form") {
+            return register_form(form_props).into_response();
+        }
+    }
+    layout
         .with_subtitle("register")
         .targeted(hx_target)
         .render(html! {
@@ -34,9 +44,18 @@ pub async fn get(hx_target: Option<TypedHeader<HXTarget>>, layout: Layout) -> Re
                 header class="center-text" {
                     h2 { "Register" }
                 }
-                (register_form(RegisterFormProps::default()))
+                (register_form(form_props))
             }
-        }))
+        })
+        .into_response()
+}
+
+pub async fn get(hx_target: Option<TypedHeader<HXTarget>>, layout: Layout) -> Result<Response> {
+    Ok(register_page(
+        hx_target,
+        layout,
+        RegisterFormProps::default(),
+    ))
 }
 
 pub async fn post(
@@ -49,22 +68,16 @@ pub async fn post(
     Form(register): Form<Register>,
 ) -> Result<Response> {
     if register.password != register.password_confirmation {
-        return Ok(layout
-            .with_subtitle("register")
-            .targeted(hx_target)
-            .render(html! {
-                div class="center-horizontal" {
-                    header class="center-text" {
-                        h2 { "Register" }
-                    }
-                    (register_form(RegisterFormProps {
-                        email: Some(register.email),
-                        name: register.name,
-                        password_error: Some("passwords do not match".to_string()),
-                        ..Default::default()
-                    }))
-                }
-            }));
+        return Ok(register_page(
+            hx_target,
+            layout,
+            RegisterFormProps {
+                email: Some(register.email),
+                name: register.name,
+                password_error: Some("passwords do not match".to_string()),
+                ..Default::default()
+            },
+        ));
     }
     let user = match User::create(
         &pool,
@@ -80,62 +93,50 @@ pub async fn post(
         Err(err) => {
             if let Error::InvalidEntity(validation_errors) = err {
                 let field_errors = validation_errors.field_errors();
-                return Ok(layout
-                    .with_subtitle("register")
-                    .targeted(hx_target)
-                    .render(html! {
-                        div class="center-horizontal" {
-                            header class="center-text" {
-                                h2 { "Register" }
-                            }
-                            (register_form(RegisterFormProps {
-                                email: Some(register.email),
-                                name: register.name,
-                                email_error: field_errors.get("email").map(|&errors| {
-                                    errors
-                                        .iter()
-                                        .filter_map(|error| error.message.clone().map(|m| m.to_string()))
-                                        .collect::<Vec<String>>()
-                                        .join(", ")
-                                }),
-                                name_error: field_errors.get("name").map(|&errors| {
-                                    errors
-                                        .iter()
-                                        .filter_map(|error| error.message.clone().map(|m| m.to_string()))
-                                        .collect::<Vec<String>>()
-                                        .join(", ")
-                                }),
-                                password_error: field_errors.get("password").map(|&errors| {
-                                    errors
-                                        .iter()
-                                        .filter_map(|error| error.message.clone().map(|m| m.to_string()))
-                                        .collect::<Vec<String>>()
-                                        .join(", ")
-                                }),
-                                ..Default::default()
-                            }))
-                        }
-                    }));
+                return Ok(register_page(
+                    hx_target,
+                    layout,
+                    RegisterFormProps {
+                        email: Some(register.email),
+                        name: register.name,
+                        email_error: field_errors.get("email").map(|&errors| {
+                            errors
+                                .iter()
+                                .filter_map(|error| error.message.clone().map(|m| m.to_string()))
+                                .collect::<Vec<String>>()
+                                .join(", ")
+                        }),
+                        name_error: field_errors.get("name").map(|&errors| {
+                            errors
+                                .iter()
+                                .filter_map(|error| error.message.clone().map(|m| m.to_string()))
+                                .collect::<Vec<String>>()
+                                .join(", ")
+                        }),
+                        password_error: field_errors.get("password").map(|&errors| {
+                            errors
+                                .iter()
+                                .filter_map(|error| error.message.clone().map(|m| m.to_string()))
+                                .collect::<Vec<String>>()
+                                .join(", ")
+                        }),
+                        ..Default::default()
+                    },
+                ));
             }
             if let Error::Sqlx(sqlx::error::Error::Database(db_error)) = &err {
                 if let Some(constraint) = db_error.constraint() {
                     if constraint == "users_email_idx" {
-                        return Ok(layout
-                            .with_subtitle("register")
-                            .targeted(hx_target)
-                            .render(html! {
-                                div class="center-horizontal" {
-                                    header class="center-text" {
-                                        h2 { "Register" }
-                                    }
-                                    (register_form(RegisterFormProps {
-                                        email: Some(register.email),
-                                        name: register.name,
-                                        email_error: Some("email already exists".to_string()),
-                                        ..Default::default()
-                                    }))
-                                }
-                            }));
+                        return Ok(register_page(
+                            hx_target,
+                            layout,
+                            RegisterFormProps {
+                                email: Some(register.email),
+                                name: register.name,
+                                email_error: Some("email already exists".to_string()),
+                                ..Default::default()
+                            },
+                        ));
                     }
                 }
             }
