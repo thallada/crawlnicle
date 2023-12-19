@@ -1,7 +1,7 @@
 use maud::{html, Markup};
 use uuid::Uuid;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ResetPasswordFormProps {
     pub token: Uuid,
     pub email: String,
@@ -10,9 +10,20 @@ pub struct ResetPasswordFormProps {
 }
 
 pub fn reset_password_form(props: ResetPasswordFormProps) -> Markup {
-    let ResetPasswordFormProps { token, email, password_error, general_error } = props;
+    let ResetPasswordFormProps {
+        token,
+        email,
+        password_error,
+        general_error,
+    } = props;
     html! {
-        form action="reset-password" method="post" class="auth-form-grid" {
+        form
+            action="/reset-password"
+            method="post"
+            hx-post="/reset-password"
+            id="reset-password-form"
+            class="auth-form-grid"
+        {
             input
                 type="text"
                 name="token"
@@ -28,12 +39,24 @@ pub fn reset_password_form(props: ResetPasswordFormProps) -> Markup {
                 value=(email)
                 required;
             label for="password" { "Password" }
-            input type="password" name="password" id="password" placeholder="Password" minlength="8" maxlength="255" required;
+            input
+                type="password"
+                name="password"
+                id="password"
+                placeholder="Password"
+                minlength="8"
+                maxlength="255"
+                required;
             @if let Some(password_error) = password_error {
                 span class="error" { (password_error) }
             }
             label for="password_confirmation" { "Confirm Password" }
-            input type="password" name="password_confirmation" id="password_confirmation" placeholder="Confirm Password" required;
+            input
+                type="password"
+                name="password_confirmation"
+                id="password_confirmation"
+                placeholder="Confirm Password"
+                required;
             button type="submit" { "Reset password" }
             @if let Some(general_error) = general_error {
                 span class="error" { (general_error) }

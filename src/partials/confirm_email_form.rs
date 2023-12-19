@@ -11,7 +11,13 @@ pub struct ConfirmEmailFormProps {
 pub fn confirm_email_form(props: ConfirmEmailFormProps) -> Markup {
     let ConfirmEmailFormProps { token, email } = props;
     html! {
-        form action="/confirm-email" method="post" class="auth-form-grid" {
+        form
+            action="/confirm-email"
+            method="post"
+            hx-post="/confirm-email"
+            id="confirm-email-form"
+            class="auth-form-grid"
+        {
             input
                 type="text"
                 name="token"

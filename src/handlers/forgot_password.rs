@@ -46,6 +46,26 @@ pub fn forgot_password_page(
         .into_response()
 }
 
+pub fn confirm_forgot_password_sent_page(
+    hx_target: Option<TypedHeader<HXTarget>>,
+    layout: Layout,
+) -> Response {
+    layout
+        .with_subtitle("forgot password")
+        .targeted(hx_target)
+        .render(html! {
+            div class="center-horizontal" {
+                header class="center-text" {
+                    h2 { "Reset password email sent" }
+                }
+                p class="readable-width" {
+                    "If the email you entered matched an existing account with a verified email, then a password reset email was sent. Please follow the link sent in the email."
+                }
+            }
+        })
+        .into_response()
+}
+
 pub async fn get(
     auth: AuthContext,
     hx_target: Option<TypedHeader<HXTarget>>,
@@ -76,19 +96,7 @@ pub async fn post(
         Err(err) => {
             if let Error::NotFoundString(_, _) = err {
                 info!(email = forgot_password.email, "invalid email");
-                return Ok(layout
-                    .with_subtitle("forgot password")
-                    .targeted(hx_target)
-                    .render(html! {
-                        div class="center-horizontal" {
-                            header class="center-text" {
-                                h2 { "Reset password email sent" }
-                            }
-                            p class="readable-width" {
-                                "If the email you entered matched an existing account with a verified email, then a password reset email was sent. Please follow the link sent in the email."
-                            }
-                        }
-                    }));
+                return Ok(confirm_forgot_password_sent_page(hx_target, layout));
             } else {
                 return Err(err);
             }
@@ -107,17 +115,5 @@ pub async fn post(
     } else {
         warn!(user_id = %user.user_id, "user exists with unverified email, skip sending password reset email");
     }
-    Ok(layout
-        .with_subtitle("forgot password")
-        .targeted(hx_target)
-        .render(html! {
-            div class="center-horizontal" {
-                header class="center-text" {
-                    h2 { "Reset password email sent" }
-                }
-                p class="readable-width" {
-                    "If the email you entered matched an existing account with a verified email, then a password reset email was sent. Please follow the link sent in the email."
-                }
-            }
-        }))
+    Ok(confirm_forgot_password_sent_page(hx_target, layout))
 }

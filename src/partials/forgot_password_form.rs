@@ -9,7 +9,13 @@ pub struct ForgotPasswordFormProps {
 pub fn forgot_password_form(props: ForgotPasswordFormProps) -> Markup {
     let ForgotPasswordFormProps { email, email_error } = props;
     html! {
-        form action="forgot-password" method="post" class="auth-form-grid" {
+        form
+            action="/forgot-password"
+            method="post"
+            hx-post="/forgot-password"
+            id="forgot-password-form"
+            class="auth-form-grid"
+        {
             label for="email" { "Email" }
             input
                 type="email"

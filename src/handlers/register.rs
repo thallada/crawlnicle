@@ -47,7 +47,6 @@ pub fn register_page(
                 (register_form(form_props))
             }
         })
-        .into_response()
 }
 
 pub async fn get(hx_target: Option<TypedHeader<HXTarget>>, layout: Layout) -> Result<Response> {

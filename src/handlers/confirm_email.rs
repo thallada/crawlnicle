@@ -2,7 +2,7 @@ use axum::extract::{Query, State};
 use axum::response::Response;
 use axum::{Form, TypedHeader};
 use lettre::SmtpTransport;
-use maud::html;
+use maud::{html, Markup};
 use serde::Deserialize;
 use serde_with::{serde_as, NoneAsEmptyString};
 use sqlx::PgPool;
@@ -24,6 +24,46 @@ pub struct ConfirmEmailQuery {
     pub token_id: Option<Base62Uuid>,
 }
 
+#[derive(Debug, Default)]
+pub struct ConfirmEmailPageProps<'a> {
+    pub hx_target: Option<TypedHeader<HXTarget>>,
+    pub layout: Layout,
+    pub form_props: ConfirmEmailFormProps,
+    pub header: Option<&'a str>,
+    pub desc: Option<Markup>,
+}
+
+pub fn confirm_email_page(
+    ConfirmEmailPageProps {
+        hx_target,
+        layout,
+        form_props,
+        header,
+        desc,
+    }: ConfirmEmailPageProps,
+) -> Response {
+    layout
+        .with_subtitle("confirm email")
+        .targeted(hx_target)
+        .render(html! {
+            div class="center-horizontal" {
+                header class="center-text" {
+                    h2 { (header.unwrap_or("Confirm your email address")) }
+                }
+                @if let Some(desc) = desc {
+                    (desc)
+                } @else {
+                    p class="readable-width" {
+                        "Enter your email to resend the confirmation email. If you don't have an account yet, create one "
+                        a href="/register" { "here" }
+                        "."
+                    }
+                }
+                (confirm_email_form(form_props))
+            }
+        })
+}
+
 pub async fn get(
     State(pool): State<PgPool>,
     auth: AuthContext,
@@ -38,36 +78,33 @@ pub async fn get(
             Err(err) => {
                 if let Error::NotFoundUuid(_, _) = err {
                     warn!(token_id = %token_id.as_uuid(), "token not found in database");
-                    return Ok(layout
-                        .with_subtitle("confirm email")
-                        .targeted(hx_target)
-                        .render(html! {
-                            div class="center-horizontal" {
-                                header class="center-text" {
-                                    h2 { "Email verification token not found" }
-                                }
-                                p class="readable-width" { "Enter your email to resend the confirmation email. If you don't have an account yet, create one " a href="/register" { "here" } "." }
-                                (confirm_email_form(ConfirmEmailFormProps::default()))
-                            }
-                        }));
+                    return Ok(confirm_email_page(ConfirmEmailPageProps {
+                        hx_target,
+                        layout,
+                        form_props: ConfirmEmailFormProps::default(),
+                        header: Some("Email verification token not found"),
+                        ..Default::default()
+                    }));
                 }
                 return Err(err);
             }
         };
         if token.expired() {
             warn!(token_id = %token.token_id, "token expired");
-            Ok(layout
-                .with_subtitle("confirm email")
-                .targeted(hx_target)
-                .render(html! {
-                    div class="center-horizontal" {
-                        header class="center-text" {
-                            h2 { "Email verification token is expired" }
-                        }
-                        p class="readable-width" { "Click the button below to resend a new confirmation email. The link in the email will be valid for another 24 hours."}
-                        (confirm_email_form(ConfirmEmailFormProps { token: Some(token), email: None }))
+            Ok(confirm_email_page(ConfirmEmailPageProps {
+                hx_target,
+                layout,
+                form_props: ConfirmEmailFormProps {
+                    token: Some(token),
+                    ..Default::default()
+                },
+                header: Some("Email verification token is expired"),
+                desc: Some(html! {
+                    p class="readable-width" {
+                        "Click the button below to resend a new confirmation email. The link in the email will be valid for another 24 hours."
                     }
-                }))
+                }),
+            }))
         } else {
             info!(token_id = %token.token_id, "token valid, verifying email");
             User::verify_email(&pool, token.user_id).await?;
@@ -88,23 +125,15 @@ pub async fn get(
                 }))
         }
     } else {
-        Ok(layout
-            .with_subtitle("confirm email")
-            .targeted(hx_target)
-            .render(html! {
-                div class="center-horizontal" {
-                    header class="center-text" {
-                        h2 { "Confirm your email address" }
-                    }
-                    p class="readable-width" { "An email was sent to your email address upon registration containing a link that will confirm your email address. If you can't find it or it has been more than 24 hours since it was sent, you can resend the email by submitting the form below:"}
-                    (confirm_email_form(
-                        ConfirmEmailFormProps {
-                            token: None,
-                            email: auth.current_user.map(|u| u.email),
-                        }
-                    ))
-                }
-            }))
+        Ok(confirm_email_page(ConfirmEmailPageProps {
+            hx_target,
+            layout,
+            form_props: ConfirmEmailFormProps {
+                email: auth.current_user.map(|u| u.email),
+                ..Default::default()
+            },
+            ..Default::default()
+        }))
     }
 }
 
@@ -172,21 +201,17 @@ pub async fn post(
                 }
             }));
     }
-    Ok(layout
-        .with_subtitle("confirm email")
-        .targeted(hx_target)
-        .render(html! {
-            div class="center-horizontal" {
-                header class="center-text" {
-                    h2 { "Email verification token not found" }
-                }
-                p class="readable-width" { "Enter your email to resend the confirmation email." }
-                p class="readable-width" {
-                    "If you don't have an account yet, create one "
-                    a href="/register" { "here" }
-                    "."
-                }
-                (confirm_email_form(ConfirmEmailFormProps::default()))
+    Ok(confirm_email_page(ConfirmEmailPageProps {
+        hx_target,
+        layout,
+        form_props: ConfirmEmailFormProps::default(),
+        header: Some("Email verification token not found"),
+        desc: Some(html! {
+            p class="readable-width" {
+            "Enter your email to resend the confirmation email. If you don't have an account yet, create one "
+            a href="/register" { "here" }
+            "."
             }
-        }))
+        }),
+    }))
 }

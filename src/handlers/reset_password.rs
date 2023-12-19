@@ -1,5 +1,5 @@
 use axum::extract::Query;
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use axum::TypedHeader;
 use axum::{extract::State, Form};
 use axum_client_ip::SecureClientIp;
@@ -36,26 +36,84 @@ pub struct ResetPasswordQuery {
     pub token_id: Option<Base62Uuid>,
 }
 
-pub fn reset_password_page(
-    hx_target: Option<TypedHeader<HXTarget>>,
-    layout: Layout,
-    form_props: ResetPasswordFormProps,
+#[derive(Debug, Default)]
+pub struct InvalidTokenPageProps<'a> {
+    pub hx_target: Option<TypedHeader<HXTarget>>,
+    pub layout: Layout,
+    pub header: Option<&'a str>,
+    pub desc: Option<&'a str>,
+}
+
+pub fn invalid_token_page(
+    InvalidTokenPageProps {
+        hx_target,
+        layout,
+        header,
+        desc,
+    }: InvalidTokenPageProps,
 ) -> Response {
     layout
-        .with_subtitle("forgot password")
+        .with_subtitle("reset password")
         .targeted(hx_target)
         .render(html! {
             div class="center-horizontal" {
                 header class="center-text" {
-                    h2 { "Reset Password" }
+                    h2 { (header.unwrap_or("Reset Password")) }
                 }
-                p {
+                @if let Some(desc) = desc {
+                    p class="readable-width" { (desc) }
+                }
+                p class="readable-width" {
+                    a href="/forgot-password" {
+                        "Follow this link to request a new password reset email"
+                    }
+                    "."
+                }
+            }
+        })
+}
+
+#[derive(Debug, Default)]
+pub struct ResetPasswordPageProps<'a> {
+    pub hx_target: Option<TypedHeader<HXTarget>>,
+    pub layout: Layout,
+    pub form_props: ResetPasswordFormProps,
+    pub header: Option<&'a str>,
+    pub post_form_error: Option<&'a str>,
+}
+
+pub fn reset_password_page(
+    ResetPasswordPageProps {
+        hx_target,
+        layout,
+        form_props,
+        header,
+        post_form_error,
+    }: ResetPasswordPageProps,
+) -> Response {
+    layout
+        .with_subtitle("reset password")
+        .targeted(hx_target)
+        .render(html! {
+            div class="center-horizontal" {
+                header class="center-text" {
+                    h2 { (header.unwrap_or("Reset Password")) }
+                }
+                p class="readable-width" {
                     "A password reset email will be sent if the email submitted matches an account in the system and the email is verfied. If your email is not verified, " a href="/confirm-email" { "please verify your email first" } "."
                 }
                 (reset_password_form(form_props))
+                @if let Some(post_form_error) = post_form_error {
+                    p class="error readable-width" { (post_form_error) }
+                    p class="readable-width" {
+                        a href="/forgot-password" {
+                            "Follow this link to request a new password reset email"
+                        }
+                        ". The link in the email will be valid for 24 hours."
+                    }
+                }
             }
         })
-        .into_response()
 }
 
 pub async fn get(
@@ -71,68 +129,45 @@ pub async fn get(
             Err(err) => {
                 if let Error::NotFoundUuid(_, _) = err {
                     warn!(token_id = %token_id.as_uuid(), "token not found in database");
-                    return Ok(layout
-                        .with_subtitle("reset password")
-                        .targeted(hx_target)
-                        .render(html! {
-                            div class="center-horizontal" {
-                                header class="center-text" {
-                                    h2 { "Password reset token not found" }
-                                }
-                                p class="readable-width" { "The reset password link has already been used or is invalid." }
-                                p class="readable-width" { a href="/forgot-password" { "Follow this link to request a new password reset email" } "." }
-                            }
-                        }));
+                    return Ok(invalid_token_page(InvalidTokenPageProps {
+                        hx_target,
+                        layout,
+                        header: Some("Password reset token not found"),
+                        desc: Some("The reset password link has already been used or is invalid."),
+                    }));
                 }
                 return Err(err);
             }
         };
         if token.expired() {
             warn!(token_id = %token.token_id, "token expired");
-            Ok(layout
-                .with_subtitle("reset password")
-                .targeted(hx_target)
-                .render(html! {
-                    div class="center-horizontal" {
-                        header class="center-text" {
-                            h2 { "Password reset token is expired" }
-                        }
-                        p class="readable-width" { a href="/forgot-password" { "Follow this link to request a new password reset email" } ". The link in the email will be valid for 24 hours." }
-                    }
-                }))
+            Ok(invalid_token_page(InvalidTokenPageProps {
+                hx_target,
+                layout,
+                header: Some("Password reset token expired"),
+                ..Default::default()
+            }))
         } else {
             info!(token_id = %token.token_id, "token valid, showing reset password form");
             let user = User::get(&pool, token.user_id).await?;
-            Ok(layout
-                .with_subtitle("reset password")
-                .targeted(hx_target)
-                .render(html! {
-                    div class="center-horizontal" {
-                        header class="center-text" {
-                            h2 { "Reset Password" }
-                        }
-                        (reset_password_form(ResetPasswordFormProps {
-                            token: token.token_id,
-                            email: user.email,
-                            password_error: None,
-                            general_error: None,
-                        }))
-                    }
-                }))
+            Ok(reset_password_page(ResetPasswordPageProps {
+                hx_target,
+                layout,
+                form_props: ResetPasswordFormProps {
+                    token: token.token_id,
+                    email: user.email,
+                    ..Default::default()
+                },
+                ..Default::default()
+            }))
         }
     } else {
-        Ok(layout
-            .with_subtitle("reset password")
-            .targeted(hx_target)
-            .render(html! {
-                div class="center-horizontal" {
-                    header class="center-text" {
-                        h2 { "Missing password reset token" }
-                    }
-                    p class="readable-width" { "Passwords can only be reset by requesting a password reset email and following the unique link within the email."}
-                    p class="readable-width" { a href="/forgot-password" { "Follow this link to request a new password reset email" } "." }
-                }
-            }))
+        Ok(invalid_token_page(InvalidTokenPageProps {
+            hx_target,
+            layout,
+            header: Some("Missing password reset token"),
+            desc: Some("Passwords can only be reset by requesting a password reset email and following the unique link within the email."),
+        }))
     }
 }
 
@@ -147,94 +182,75 @@ pub async fn post(
     Form(reset_password): Form<ResetPassword>,
 ) -> Result<Response> {
     if reset_password.password != reset_password.password_confirmation {
-        return Ok(layout
-            .with_subtitle("reset password")
-            .targeted(hx_target)
-            .render(html! {
-                div class="center-horizontal" {
-                    header class="center-text" {
-                        h2 { "Reset Password" }
-                    }
-                    (reset_password_form(ResetPasswordFormProps {
-                        token: reset_password.token,
-                        email: reset_password.email,
-                        password_error: Some("passwords do not match".to_string()),
-                        general_error: None,
-                    }))
-                }
-            }));
+        return Ok(reset_password_page(ResetPasswordPageProps {
+            hx_target,
+            layout,
+            form_props: ResetPasswordFormProps {
+                token: reset_password.token,
+                email: reset_password.email,
+                password_error: Some("passwords do not match".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        }));
     }
     let token = match UserPasswordResetToken::get(&pool, reset_password.token).await {
         Ok(token) => token,
         Err(err) => {
             if let Error::NotFoundUuid(_, _) = err {
                 warn!(token_id = %reset_password.token, "token not found in database");
-                return Ok(layout
-                    .with_subtitle("reset password")
-                    .targeted(hx_target)
-                    .render(html! {
-                        div class="center-horizontal" {
-                            header class="center-text" {
-                                h2 { "Reset Password" }
-                            }
-                            (reset_password_form(ResetPasswordFormProps {
-                                token: reset_password.token,
-                                email: reset_password.email,
-                                password_error: None,
-                                general_error: Some("token not found".to_string()),
-                            }))
-                            p class="error readable-width" { "The reset password link has already been used or is invalid." }
-                            p class="readable-width" { a href="/forgot-password" { "Follow this link to request a new password reset email" } "." }
-                        }
-                    }));
+                return Ok(reset_password_page(ResetPasswordPageProps {
+                    hx_target,
+                    layout,
+                    form_props: ResetPasswordFormProps {
+                        token: reset_password.token,
+                        email: reset_password.email,
+                        general_error: Some("token not found".to_string()),
+                        ..Default::default()
+                    },
+                    post_form_error: Some(
+                        "The reset password link has already been used or is invalid.",
+                    ),
+                    ..Default::default()
+                }));
             }
             return Err(err);
         }
     };
     if token.expired() {
         warn!(token_id = %token.token_id, "token expired");
-        return Ok(layout
-            .with_subtitle("reset password")
-            .targeted(hx_target)
-            .render(html! {
-                div class="center-horizontal" {
-                    header class="center-text" {
-                        h2 { "Reset Password" }
-                    }
-                    (reset_password_form(ResetPasswordFormProps {
-                        token: reset_password.token,
-                        email: reset_password.email,
-                        password_error: None,
-                        general_error: Some("token expired".to_string()),
-                    }))
-                    p class="error readable-width" { "The reset password link has expired." }
-                    p class="readable-width" { a href="/forgot-password" { "Follow this link to request a new password reset email" } ". The link in the email will be valid for 24 hours." }
-                }
-            }));
+        return Ok(reset_password_page(ResetPasswordPageProps {
+            hx_target,
+            layout,
+            form_props: ResetPasswordFormProps {
+                token: reset_password.token,
+                email: reset_password.email,
+                general_error: Some("token expired".to_string()),
+                ..Default::default()
+            },
+            post_form_error: Some("The reset password link has expired."),
+            ..Default::default()
+        }));
     }
     let user = match User::get(&pool, token.user_id).await {
         Ok(user) => user,
         Err(err) => {
             if let Error::NotFoundString(_, _) = err {
                 info!(user_id = %token.user_id, email = reset_password.email, "invalid token user_id");
-                return Ok(layout
-                    .with_subtitle("reset password")
-                    .targeted(hx_target)
-                    .render(html! {
-                        div class="center-horizontal" {
-                            header class="center-text" {
-                                h2 { "Reset Password" }
-                            }
-                            (reset_password_form(ResetPasswordFormProps {
-                                token: reset_password.token,
-                                email: reset_password.email,
-                                password_error: None,
-                                general_error: Some("user not found".to_string()),
-                            }))
-                            p class="error readable-width" { "The user associated with this password reset could not be found." }
-                            p class="readable-width" { a href="/forgot-password" { "Follow this link to request a new password reset email" } "." }
-                        }
-                    }));
+                return Ok(reset_password_page(ResetPasswordPageProps {
+                    hx_target,
+                    layout,
+                    form_props: ResetPasswordFormProps {
+                        token: reset_password.token,
+                        email: reset_password.email,
+                        general_error: Some("user not found".to_string()),
+                        ..Default::default()
+                    },
+                    post_form_error: Some(
+                        "The user associated with this password reset could not be found.",
+                    ),
+                    ..Default::default()
+                }));
             } else {
                 return Err(err);
             }
@@ -256,28 +272,23 @@ pub async fn post(
         Err(err) => {
             if let Error::InvalidEntity(validation_errors) = err {
                 let field_errors = validation_errors.field_errors();
-                return Ok(layout
-                    .with_subtitle("reset password")
-                    .targeted(hx_target)
-                    .render(html! {
-                        div class="center-horizontal" {
-                            header class="center-text" {
-                                h2 { "Reset Password" }
-                            }
-                            (reset_password_form(ResetPasswordFormProps {
-                                token: reset_password.token,
-                                email: reset_password.email,
-                                password_error: field_errors.get("password").map(|&errors| {
-                                    errors
-                                        .iter()
-                                        .filter_map(|error| error.message.clone().map(|m| m.to_string()))
-                                        .collect::<Vec<String>>()
-                                        .join(", ")
-                                }),
-                                general_error: None,
-                            }))
-                        }
-                    }));
+                return Ok(reset_password_page(ResetPasswordPageProps {
+                    hx_target,
+                    layout,
+                    form_props: ResetPasswordFormProps {
+                        token: reset_password.token,
+                        email: reset_password.email,
+                        password_error: field_errors.get("password").map(|&errors| {
+                            errors
+                                .iter()
+                                .filter_map(|error| error.message.clone().map(|m| m.to_string()))
+                                .collect::<Vec<String>>()
+                                .join(", ")
+                        }),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }));
             }
             return Err(err);
         }
