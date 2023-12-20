@@ -1,7 +1,7 @@
-use axum::TypedHeader;
 use axum::extract::Query;
-use axum::response::IntoResponse;
 use axum::extract::State;
+use axum::response::IntoResponse;
+use axum_extra::TypedHeader;
 use sqlx::PgPool;
 
 use crate::api_response::ApiResponse;
@@ -21,7 +21,5 @@ pub async fn get(
             return Ok::<ApiResponse<Vec<Feed>>, Error>(ApiResponse::Json(feeds));
         }
     }
-    Ok(ApiResponse::Html(
-        feed_list(feeds, &options).into_string(),
-    ))
+    Ok(ApiResponse::Html(feed_list(feeds, &options).into_string()))
 }

@@ -1,11 +1,10 @@
-use axum_login::{secrecy::SecretVec, AuthUser, PostgresStore};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use sqlx::{Executor, FromRow, Postgres};
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::auth::hash_password;
+use crate::auth::generate_hash;
 use crate::error::{Error, Result};
 
 #[derive(Debug, Default, Clone, FromRow)]
@@ -42,16 +41,6 @@ pub struct UpdateUserPassword {
         message = "password must be between 8 and 255 characters long"
     ))]
     pub password: String,
-}
-
-impl AuthUser<Uuid> for User {
-    fn get_id(&self) -> Uuid {
-        self.user_id
-    }
-
-    fn get_password_hash(&self) -> SecretVec<u8> {
-        SecretVec::new(self.password_hash.clone().into())
-    }
 }
 
 impl User {
@@ -101,7 +90,7 @@ impl User {
         payload: CreateUser,
     ) -> Result<User> {
         payload.validate()?;
-        let password_hash = hash_password(payload.password).await?;
+        let password_hash = generate_hash(payload.password).await?;
 
         Ok(sqlx::query_as!(
             User,
@@ -156,7 +145,7 @@ impl User {
         payload: UpdateUserPassword,
     ) -> Result<User> {
         payload.validate()?;
-        let password_hash = hash_password(payload.password).await?;
+        let password_hash = generate_hash(payload.password).await?;
 
         Ok(sqlx::query_as!(
             User,
@@ -181,5 +170,3 @@ impl User {
         .await?)
     }
 }
-
-pub type AuthContext = axum_login::extractors::AuthContext<Uuid, User, PostgresStore<User>>;

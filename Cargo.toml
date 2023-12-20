@@ -13,31 +13,32 @@ path = "src/lib.rs"
 
 [dependencies]
 ammonia = "3.3.0"
-ansi-to-html = "0.1"
+ansi-to-html = "0.2"
 anyhow = "1"
-argon2 = "0.5"
-async-fred-session = "0.1"
-axum = { version = "0.6", features = ["form", "headers", "multipart", "query"] }
-axum-client-ip = "0.4"
-# waiting for new axum-login release which will support sqlx v. 0.7+
-axum-login = { git = "https://github.com/maxcountryman/axum-login", branch = "main", features = [
-  "postgres",
-] }
+async-trait = "0.1"
+axum = { version = "0.7", features = ["form", "multipart", "query"] }
+axum-client-ip = "0.5"
+axum-extra = { version = "0.9", features = ["typed-header"] }
+axum-login = "0.10"
 bytes = "1.4"
+# TODO: replace chrono with time
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.4", features = ["derive", "env"] }
 dotenvy = "0.15"
 feed-rs = "1.3"
 futures = "0.3"
-headers = "0.3"
-http = "0.2.9"
+headers = "0.4"
+http = "1.0.0"
 ipnetwork = "0.20"
-lettre = { version = "0.10", features = ["builder"] }
-maud = { version = "0.25", features = ["axum"] }
+lettre = { version = "0.11", features = ["builder"] }
+# waiting for new maud release which will support axum v. 0.7+: https://github.com/lambda-fairy/maud/pull/401
+maud = { git = "https://github.com/vidhanio/maud", branch = "patch-1", features = [
+  "axum",
+] }
 notify = "6"
 once_cell = "1.18"
 opml = "1.1"
-rand = { version = "0.8.5", features = ["min_const_gen"] }
+password-auth = "1.0"
 readability = "0.2"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
@@ -52,11 +53,13 @@ sqlx = { version = "0.7", features = [
   "ipnetwork",
 ] }
 thiserror = "1"
+time = "0.3"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 tower = "0.4"
-tower-livereload = "0.8"
-tower-http = { version = "0.4", features = ["trace", "fs"] }
+tower-livereload = "0.9"
+tower-http = { version = "0.5", features = ["trace", "fs"] }
+tower-sessions = { version = "0.7", features = ["redis-store"] }
 tracing = { version = "0.1", features = ["valuable", "attributes"] }
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

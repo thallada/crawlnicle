@@ -1,23 +1,26 @@
 use std::{collections::HashMap, net::SocketAddr, path::Path, sync::Arc};
 
 use anyhow::Result;
-use async_fred_session::{RedisSessionStore, fred::{pool::RedisPool, types::RedisConfig}};
 use axum::{
-    response::IntoResponse,
+    error_handling::HandleErrorLayer,
     routing::{get, post},
-    Extension, Router,
+    BoxError, Router,
 };
 use axum_login::{
-    axum_sessions::SessionLayer, AuthLayer, PostgresStore, RequireAuthorizationLayer,
+    login_required,
+    tower_sessions::{fred::prelude::*, Expiry, RedisStore, SessionManagerLayer},
+    AuthManagerLayerBuilder,
 };
 use bytes::Bytes;
 use clap::Parser;
 use dotenvy::dotenv;
+use http::StatusCode;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::SmtpTransport;
 use notify::Watcher;
 use reqwest::Client;
 use sqlx::postgres::PgPoolOptions;
+use time::Duration;
 use tokio::sync::watch::channel;
 use tokio::sync::Mutex;
 use tower::ServiceBuilder;
@@ -25,30 +28,24 @@ use tower_http::{services::ServeDir, trace::TraceLayer};
 use tower_livereload::LiveReloadLayer;
 use tracing::debug;
 
-use lib::actors::crawl_scheduler::CrawlSchedulerHandle;
 use lib::actors::importer::ImporterHandle;
 use lib::config::Config;
 use lib::domain_locks::DomainLocks;
 use lib::handlers;
 use lib::log::init_tracing;
-use lib::models::user::User;
 use lib::state::AppState;
 use lib::USER_AGENT;
-use uuid::Uuid;
+use lib::{actors::crawl_scheduler::CrawlSchedulerHandle, auth::Backend};
 
 async fn serve(app: Router, addr: SocketAddr) -> Result<()> {
     debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-        .await?;
-    Ok(())
-}
-
-async fn protected_handler(Extension(user): Extension<User>) -> impl IntoResponse {
-    format!(
-        "Logged in as: {}",
-        user.name.unwrap_or_else(|| "No name".to_string())
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
     )
+    .await?;
+    Ok(())
 }
 
 #[tokio::main]
@@ -65,7 +62,8 @@ async fn main() -> Result<()> {
     let domain_locks = DomainLocks::new();
     let client = Client::builder().user_agent(USER_AGENT).build()?;
 
-    let secret = config.session_secret.as_bytes();
+    // TODO: not needed anymore?
+    // let secret = config.session_secret.as_bytes();
 
     let pool = PgPoolOptions::new()
         .max_connections(config.database_max_connections)
@@ -73,15 +71,27 @@ async fn main() -> Result<()> {
         .await?;
 
     let redis_config = RedisConfig::from_url(&config.redis_url)?;
-    let redis_pool = RedisPool::new(redis_config, None, None, config.redis_pool_size)?;
-    redis_pool.connect();
-    redis_pool.wait_for_connect().await?;
+    // TODO: https://github.com/maxcountryman/tower-sessions/issues/92
+    // let redis_pool = RedisPool::new(redis_config, None, None, config.redis_pool_size)?;
+    // redis_pool.connect();
+    // redis_pool.wait_for_connect().await?;
+    let redis_client = RedisClient::new(redis_config, None, None, None);
+    redis_client.connect();
+    redis_client.wait_for_connect().await?;
 
-    let session_store = RedisSessionStore::from_pool(redis_pool, Some("async-fred-session/".into()));
-    let session_layer = SessionLayer::new(session_store, secret).with_secure(false);
-    let user_store = PostgresStore::<User>::new(pool.clone())
-        .with_query("select * from users where user_id = $1");
-    let auth_layer = AuthLayer::new(user_store, secret);
+    let session_store = RedisStore::new(redis_client);
+    let session_layer = SessionManagerLayer::new(session_store)
+        .with_secure(!cfg!(debug_assertions))
+        .with_expiry(Expiry::OnInactivity(Duration::days(
+            config.session_duration_days,
+        )));
+
+    let backend = Backend::new(pool.clone());
+    let auth_service = ServiceBuilder::new()
+        .layer(HandleErrorLayer::new(|_: BoxError| async {
+            StatusCode::BAD_REQUEST
+        }))
+        .layer(AuthManagerLayerBuilder::new(backend, session_layer).build());
 
     let creds = Credentials::new(config.smtp_user.clone(), config.smtp_password.clone());
 
@@ -107,8 +117,8 @@ async fn main() -> Result<()> {
 
     let addr = format!("{}:{}", &config.host, &config.port).parse()?;
     let mut app = Router::new()
-        .route("/protected", get(protected_handler))
-        .route_layer(RequireAuthorizationLayer::<Uuid, User>::login())
+        .route("/account", get(handlers::account::get))
+        .route_layer(login_required!(Backend, login_url = "/login"))
         .route("/api/v1/feeds", get(handlers::api::feeds::get))
         .route("/api/v1/feed", post(handlers::api::feed::post))
         .route("/api/v1/feed/:id", get(handlers::api::feed::get))
@@ -152,8 +162,7 @@ async fn main() -> Result<()> {
             mailer,
         })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
-        .layer(auth_layer)
-        .layer(session_layer)
+        .layer(auth_service)
         .layer(ip_source_extension);
 
     if cfg!(debug_assertions) {

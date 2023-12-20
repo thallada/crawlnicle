@@ -1,7 +1,5 @@
-use axum::{
-    headers::{self, Header},
-    http::{HeaderName, HeaderValue},
-};
+use axum::http::{HeaderName, HeaderValue};
+use axum_extra::headers::{self, Header};
 
 /// Typed header implementation for the `Accept` header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

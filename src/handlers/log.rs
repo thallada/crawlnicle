@@ -2,14 +2,14 @@ use std::convert::Infallible;
 use std::str::from_utf8;
 use std::time::Duration;
 
-use ansi_to_html::convert_escaped;
+use ansi_to_html::convert;
 use axum::extract::State;
 use axum::response::sse::KeepAlive;
 use axum::response::{
     sse::{Event, Sse},
     Response,
 };
-use axum::TypedHeader;
+use axum_extra::TypedHeader;
 use bytes::Bytes;
 use maud::{html, PreEscaped};
 use tokio::sync::watch::Receiver;
@@ -29,7 +29,7 @@ pub async fn get(hx_target: Option<TypedHeader<HXTarget>>, layout: Layout) -> Re
         .targeted(hx_target)
         .render(html! {
             pre id="log" hx-sse="connect:/log/stream swap:message" hx-swap="beforeend" hx-target="#log" {
-                (PreEscaped(convert_escaped(from_utf8(mem_buf.as_slices().0).unwrap()).unwrap()))
+                (PreEscaped(convert(from_utf8(mem_buf.as_slices().0).unwrap()).unwrap()))
             }
         }))
 }
@@ -41,7 +41,7 @@ pub async fn stream(
     let log_stream = log_stream.map(|line| {
         Ok(Event::default().data(
             html! {
-                (PreEscaped(convert_escaped(from_utf8(&line).unwrap()).unwrap()))
+                (PreEscaped(convert(from_utf8(&line).unwrap()).unwrap()))
             }
             .into_string(),
         ))

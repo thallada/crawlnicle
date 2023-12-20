@@ -1,38 +1,95 @@
 use anyhow::Context;
-use argon2::password_hash::{
-    rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString,
-};
-use argon2::Argon2;
+use async_trait::async_trait;
+use axum_login::{AuthUser, AuthnBackend, UserId};
+use password_auth;
+use serde::Deserialize;
+use sqlx::PgPool;
+use uuid::Uuid;
 
-use crate::error::{Error, Result};
+use crate::{error::Result, models::user::User};
 
-pub async fn hash_password(password: String) -> Result<String> {
+pub async fn generate_hash(password: String) -> Result<String> {
     // Argon2 hashing is designed to be computationally intensive,
-    // so we need to do this on a blocking thread.
-    tokio::task::spawn_blocking(move || -> Result<String> {
-        let salt = SaltString::generate(&mut OsRng);
-        let argon2 = Argon2::default();
-        Ok(argon2
-            .hash_password(password.as_bytes(), &salt)
-            .map_err(|e| anyhow::anyhow!("failed to generate password hash: {}", e))?
-            .to_string())
-    })
-    .await
-    .context("panic in generating password hash")?
+    tokio::task::spawn_blocking(move || -> String { password_auth::generate_hash(password) })
+        .await
+        .context("panic in generating password hash")
+        .map_err(|e| e.into())
 }
 
 pub async fn verify_password(password: String, password_hash: String) -> Result<()> {
     tokio::task::spawn_blocking(move || -> Result<()> {
-        let hash = PasswordHash::new(&password_hash)
-            .map_err(|e| anyhow::anyhow!("invalid password hash: {}", e))?;
-
-        Argon2::default()
-            .verify_password(password.as_bytes(), &hash)
-            .map_err(|e| match e {
-                argon2::password_hash::Error::Password => Error::Unauthorized,
-                _ => anyhow::anyhow!("failed to verify password hash: {}", e).into(),
-            })
+        password_auth::verify_password(password.as_bytes(), &password_hash)
+            .map_err(|e| anyhow::anyhow!("failed to verify password hash: {}", e).into())
     })
     .await
     .context("panic in verifying password hash")?
 }
+
+impl AuthUser for User {
+    type Id = Uuid;
+
+    fn id(&self) -> Self::Id {
+        self.user_id
+    }
+
+    fn session_auth_hash(&self) -> &[u8] {
+        self.password_hash.as_bytes()
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Credentials {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct Backend {
+    db: PgPool,
+}
+
+impl Backend {
+    pub fn new(db: PgPool) -> Self {
+        Self { db }
+    }
+}
+
+#[async_trait]
+impl AuthnBackend for Backend {
+    type User = User;
+    type Credentials = Credentials;
+    type Error = sqlx::Error;
+
+    async fn authenticate(
+        &self,
+        creds: Self::Credentials,
+    ) -> Result<Option<Self::User>, Self::Error> {
+        let user = User::get_by_email(&self.db, creds.email).await.ok();
+
+        if let Some(user) = user {
+            if verify_password(creds.password, user.password_hash.clone())
+                .await
+                .ok()
+                .is_some()
+            {
+                return Ok(Some(user));
+            }
+        }
+        Ok(None)
+    }
+
+    async fn get_user(&self, user_id: &UserId<Self>) -> Result<Option<Self::User>, Self::Error> {
+        sqlx::query_as!(
+            User,
+            r#"select
+                *
+            from users
+            where user_id = $1"#,
+            user_id
+        )
+        .fetch_optional(&self.db)
+        .await
+    }
+}
+
+pub type AuthSession = axum_login::AuthSession<Backend>;

@@ -1,8 +1,8 @@
 use axum::extract::Query;
 use axum::response::Response;
-use axum::TypedHeader;
 use axum::{extract::State, Form};
 use axum_client_ip::SecureClientIp;
+use axum_extra::TypedHeader;
 use headers::UserAgent;
 use lettre::SmtpTransport;
 use maud::html;

@@ -8,17 +8,17 @@ use axum::{
     extract::{FromRef, FromRequestParts, State},
     http::request::Parts,
     response::{IntoResponse, Response},
-    TypedHeader,
 };
+use axum_extra::TypedHeader;
 use headers::HeaderValue;
 use maud::{html, Markup, DOCTYPE};
 
-use crate::models::user::AuthContext;
-use crate::models::user::User;
+use crate::auth::AuthSession;
 use crate::config::Config;
 use crate::htmx::HXTarget;
-use crate::partials::header::header;
+use crate::models::user::User;
 use crate::partials::footer::footer;
+use crate::partials::header::header;
 #[cfg(not(debug_assertions))]
 use crate::{CSS_MANIFEST, JS_MANIFEST};
 
@@ -42,13 +42,12 @@ where
         let State(config) = State::<Config>::from_request_parts(parts, state)
             .await
             .map_err(|err| err.into_response())?;
-        let auth_context =
-            AuthContext::from_request_parts(parts, state)
-                .await
-                .map_err(|err| err.into_response())?;
+        let auth_session = AuthSession::from_request_parts(parts, state)
+            .await
+            .map_err(|err| err.into_response())?;
         Ok(Self {
             title: config.title,
-            user: auth_context.current_user,
+            user: auth_session.user,
             ..Default::default()
         })
     }
@@ -119,11 +118,11 @@ impl Layout {
         self
     }
 
-    /// If the given HX-Target is present and equal to "main-content", then this function will make 
-    /// this Layout skip rendering the layout and only render the template with a hx-swap-oob 
+    /// If the given HX-Target is present and equal to "main-content", then this function will make
+    /// this Layout skip rendering the layout and only render the template with a hx-swap-oob
     /// <title> element to update the document title.
     ///
-    /// Links and forms that are boosted with the hx-boost attribute are only updating a portion of 
+    /// Links and forms that are boosted with the hx-boost attribute are only updating a portion of
     /// the page inside the layout, so there is no need to render and send the layout again.
     pub fn targeted(mut self, hx_target: Option<TypedHeader<HXTarget>>) -> Self {
         if let Some(hx_target) = hx_target {

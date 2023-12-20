@@ -1,6 +1,7 @@
 use axum::extract::{Query, State};
 use axum::response::Response;
-use axum::{Form, TypedHeader};
+use axum::Form;
+use axum_extra::TypedHeader;
 use lettre::SmtpTransport;
 use maud::{html, Markup};
 use serde::Deserialize;
@@ -9,11 +10,12 @@ use sqlx::PgPool;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+use crate::auth::AuthSession;
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::htmx::HXTarget;
 use crate::mailers::email_verification::send_confirmation_email;
-use crate::models::user::{AuthContext, User};
+use crate::models::user::User;
 use crate::models::user_email_verification_token::UserEmailVerificationToken;
 use crate::partials::confirm_email_form::{confirm_email_form, ConfirmEmailFormProps};
 use crate::partials::layout::Layout;
@@ -66,7 +68,7 @@ pub fn confirm_email_page(
 
 pub async fn get(
     State(pool): State<PgPool>,
-    auth: AuthContext,
+    auth: AuthSession,
     hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
     query: Query<ConfirmEmailQuery>,
@@ -129,7 +131,7 @@ pub async fn get(
             hx_target,
             layout,
             form_props: ConfirmEmailFormProps {
-                email: auth.current_user.map(|u| u.email),
+                email: auth.user.map(|u| u.email),
                 ..Default::default()
             },
             ..Default::default()

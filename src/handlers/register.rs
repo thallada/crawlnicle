@@ -1,6 +1,6 @@
 use axum::response::{IntoResponse, Response};
-use axum::TypedHeader;
 use axum::{extract::State, Form};
+use axum_extra::TypedHeader;
 use http::HeaderValue;
 use lettre::SmtpTransport;
 use maud::html;
@@ -8,11 +8,12 @@ use serde::Deserialize;
 use serde_with::{serde_as, NoneAsEmptyString};
 use sqlx::PgPool;
 
+use crate::auth::AuthSession;
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::htmx::{HXRedirect, HXTarget};
 use crate::mailers::email_verification::send_confirmation_email;
-use crate::models::user::{AuthContext, CreateUser, User};
+use crate::models::user::{CreateUser, User};
 use crate::partials::layout::Layout;
 use crate::partials::register_form::{register_form, RegisterFormProps};
 
@@ -61,7 +62,7 @@ pub async fn post(
     State(pool): State<PgPool>,
     State(mailer): State<SmtpTransport>,
     State(config): State<Config>,
-    mut auth: AuthContext,
+    mut auth: AuthSession,
     hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
     Form(register): Form<Register>,

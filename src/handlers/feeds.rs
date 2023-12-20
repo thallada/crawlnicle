@@ -1,6 +1,6 @@
 use axum::extract::State;
 use axum::response::Response;
-use axum::TypedHeader;
+use axum_extra::TypedHeader;
 use maud::html;
 use sqlx::PgPool;
 

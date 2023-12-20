@@ -13,7 +13,7 @@ impl FromStr for IpSource {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // SourceClientIpSource doesn't implement FromStr itself, so I have to implement it on this 
+        // SourceClientIpSource doesn't implement FromStr itself, so I have to implement it on this
         // wrapping newtype. See https://github.com/imbolc/axum-client-ip/issues/11
         let inner = match s {
             "RightmostForwarded" => SecureClientIpSource::RightmostForwarded,
@@ -63,4 +63,6 @@ pub struct Config {
     pub session_secret: String,
     #[clap(long, env, default_value = "ConnectInfo")]
     pub ip_source: IpSource,
+    #[clap(long, env, default_value = "100")]
+    pub session_duration_days: i64,
 }

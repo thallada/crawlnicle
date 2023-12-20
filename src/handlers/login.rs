@@ -1,27 +1,32 @@
 use axum::response::{IntoResponse, Response};
-use axum::TypedHeader;
-use axum::{extract::State, Form};
+use axum::Form;
+use axum_extra::TypedHeader;
 use http::HeaderValue;
 use maud::html;
 use serde::Deserialize;
 use serde_with::serde_as;
-use sqlx::PgPool;
 use tracing::info;
 
-use crate::auth::verify_password;
+use crate::auth::{AuthSession, Credentials};
 use crate::error::{Error, Result};
 use crate::htmx::{HXRedirect, HXRequest, HXTarget};
 use crate::partials::login_form::{login_form, LoginFormProps};
-use crate::{
-    models::user::{AuthContext, User},
-    partials::layout::Layout,
-};
+use crate::{models::user::User, partials::layout::Layout};
 
 #[serde_as]
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Login {
     email: String,
     password: String,
+}
+
+impl From<Login> for Credentials {
+    fn from(login: Login) -> Self {
+        Credentials {
+            email: login.email,
+            password: login.password,
+        }
+    }
 }
 
 pub fn login_page(
@@ -53,47 +58,30 @@ pub async fn get(hx_target: Option<TypedHeader<HXTarget>>, layout: Layout) -> Re
 }
 
 pub async fn post(
-    State(pool): State<PgPool>,
-    mut auth: AuthContext,
+    mut auth: AuthSession,
     hx_target: Option<TypedHeader<HXTarget>>,
     hx_request: Option<TypedHeader<HXRequest>>,
     layout: Layout,
     Form(login): Form<Login>,
 ) -> Result<Response> {
-    let user: User = match User::get_by_email(&pool, login.email.clone()).await {
-        Ok(user) => user,
-        Err(err) => {
-            if let Error::NotFoundString(_, _) = err {
-                info!(email = login.email, "invalid email");
-                return Ok(login_page(
-                    hx_target,
-                    layout,
-                    LoginFormProps {
-                        email: Some(login.email),
-                        general_error: Some("invalid email or password".to_string()),
-                        ..Default::default()
-                    },
-                ));
-            } else {
-                return Err(err);
-            }
+    let user: User = match auth.authenticate(login.clone().into()).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            info!(email = login.email, "authentication failed");
+            return Ok(login_page(
+                hx_target,
+                layout,
+                LoginFormProps {
+                    email: Some(login.email),
+                    general_error: Some("invalid email or password".to_string()),
+                    ..Default::default()
+                },
+            ));
+        }
+        Err(_) => {
+            return Err(Error::InternalServerError);
         }
     };
-    if verify_password(login.password, user.password_hash.clone())
-        .await
-        .is_err()
-    {
-        info!(user_id = %user.user_id, "invalid password");
-        return Ok(login_page(
-            hx_target,
-            layout,
-            LoginFormProps {
-                email: Some(login.email),
-                general_error: Some("invalid email or password".to_string()),
-                ..Default::default()
-            },
-        ));
-    }
     info!(user_id = %user.user_id, "login successful");
     auth.login(&user)
         .await

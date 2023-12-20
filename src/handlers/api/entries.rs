@@ -1,7 +1,7 @@
 use axum::extract::Query;
 use axum::extract::State;
 use axum::response::IntoResponse;
-use axum::TypedHeader;
+use axum_extra::TypedHeader;
 use sqlx::PgPool;
 
 use crate::api_response::ApiResponse;

@@ -1,7 +1,7 @@
 use axum::response::{IntoResponse, Response};
-use axum::TypedHeader;
 use axum::{extract::State, Form};
 use axum_client_ip::SecureClientIp;
+use axum_extra::TypedHeader;
 use headers::UserAgent;
 use lettre::SmtpTransport;
 use maud::html;
@@ -10,11 +10,11 @@ use serde_with::serde_as;
 use sqlx::PgPool;
 use tracing::{info, warn};
 
+use crate::auth::AuthSession;
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::htmx::HXTarget;
 use crate::mailers::forgot_password::send_forgot_password_email;
-use crate::models::user::AuthContext;
 use crate::partials::forgot_password_form::{forgot_password_form, ForgotPasswordFormProps};
 use crate::{models::user::User, partials::layout::Layout};
 
@@ -67,7 +67,7 @@ pub fn confirm_forgot_password_sent_page(
 }
 
 pub async fn get(
-    auth: AuthContext,
+    auth: AuthSession,
     hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
 ) -> Result<Response> {
@@ -75,7 +75,7 @@ pub async fn get(
         hx_target,
         layout,
         ForgotPasswordFormProps {
-            email: auth.current_user.map(|u| u.email),
+            email: auth.user.map(|u| u.email),
             email_error: None,
         },
     ))
