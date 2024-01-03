@@ -3,6 +3,7 @@ use std::{collections::HashMap, net::SocketAddr, path::Path, sync::Arc};
 use anyhow::Result;
 use axum::{
     error_handling::HandleErrorLayer,
+    response::Response,
     routing::{get, post},
     BoxError, Router,
 };
@@ -28,7 +29,6 @@ use tower_http::{services::ServeDir, trace::TraceLayer};
 use tower_livereload::LiveReloadLayer;
 use tracing::debug;
 
-use lib::actors::importer::ImporterHandle;
 use lib::config::Config;
 use lib::domain_locks::DomainLocks;
 use lib::handlers;
@@ -36,6 +36,7 @@ use lib::log::init_tracing;
 use lib::state::AppState;
 use lib::USER_AGENT;
 use lib::{actors::crawl_scheduler::CrawlSchedulerHandle, auth::Backend};
+use lib::{actors::importer::ImporterHandle, htmx::not_htmx_predicate};
 
 async fn serve(app: Router, addr: SocketAddr) -> Result<()> {
     debug!("listening on {}", addr);
@@ -67,6 +68,7 @@ async fn main() -> Result<()> {
 
     let pool = PgPoolOptions::new()
         .max_connections(config.database_max_connections)
+        .acquire_timeout(std::time::Duration::from_secs(3))
         .connect(&config.database_url)
         .await?;
 
@@ -167,7 +169,7 @@ async fn main() -> Result<()> {
 
     if cfg!(debug_assertions) {
         debug!("starting livereload");
-        let livereload = LiveReloadLayer::new();
+        let livereload = LiveReloadLayer::new().request_predicate(not_htmx_predicate);
         let reloader = livereload.reloader();
         let mut watcher = notify::recommended_watcher(move |_| reloader.reload())?;
         watcher.watch(Path::new("static"), notify::RecursiveMode::Recursive)?;

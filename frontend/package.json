@@ -20,6 +20,6 @@
   },
   "type": "module",
   "dependencies": {
-    "htmx.org": "^1.9.5"
+    "htmx.org": "^1.9.10"
   }
 }

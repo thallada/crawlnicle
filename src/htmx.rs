@@ -1,3 +1,4 @@
+use axum::extract::Request;
 use axum::response::{IntoResponse, Redirect, Response};
 use headers::{self, Header};
 use http::header::{HeaderName, HeaderValue};
@@ -126,4 +127,8 @@ impl Header for HXTarget {
     {
         values.extend(std::iter::once(self.target.clone()));
     }
+}
+
+pub fn not_htmx_predicate<Body>(req: &Request<Body>) -> bool {
+    !req.headers().contains_key(HX_REQUEST)
 }
