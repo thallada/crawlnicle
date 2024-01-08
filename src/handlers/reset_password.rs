@@ -18,6 +18,7 @@ use crate::htmx::HXTarget;
 use crate::mailers::reset_password::send_password_reset_email;
 use crate::models::user::UpdateUserPassword;
 use crate::models::user_password_reset_token::UserPasswordResetToken;
+use crate::partials::link::{link, LinkProps};
 use crate::partials::reset_password_form::{reset_password_form, ResetPasswordFormProps};
 use crate::uuid::Base62Uuid;
 use crate::{models::user::User, partials::layout::Layout};
@@ -56,17 +57,21 @@ pub fn invalid_token_page(
         .with_subtitle("reset password")
         .targeted(hx_target)
         .render(html! {
-            div class="center-horizontal" {
-                header class="center-text" {
-                    h2 { (header.unwrap_or("Reset Password")) }
+            div class="w-fit mx-auto" {
+                header class="text-center" {
+                    h2 class="mb-4 text-2xl font-medium" {
+                        (header.unwrap_or("Reset Password"))
+                    }
                 }
                 @if let Some(desc) = desc {
-                    p class="readable-width" { (desc) }
+                    p class="my-4 max-w-prose" { (desc) }
                 }
-                p class="readable-width" {
-                    a href="/forgot-password" {
-                        "Follow this link to request a new password reset email"
-                    }
+                p class="my-4 max-w-prose" {
+                    (link(LinkProps {
+                        destination: "/forgot-password",
+                        title: "Follow this link to request a new password reset email",
+                        ..Default::default()
+                    }))
                     "."
                 }
             }
@@ -95,20 +100,24 @@ pub fn reset_password_page(
         .with_subtitle("reset password")
         .targeted(hx_target)
         .render(html! {
-            div class="center-horizontal" {
-                header class="center-text" {
-                    h2 { (header.unwrap_or("Reset Password")) }
+            div class="w-fit mx-auto" {
+                header class="text-center" {
+                    h2 class="mb-4 text-2xl font-medium" {
+                        (header.unwrap_or("Reset Password"))
+                    }
                 }
-                p class="readable-width" {
+                p class="my-4 max-w-prose" {
                     "A password reset email will be sent if the email submitted matches an account in the system and the email is verfied. If your email is not verified, " a href="/confirm-email" { "please verify your email first" } "."
                 }
                 (reset_password_form(form_props))
                 @if let Some(post_form_error) = post_form_error {
-                    p class="error readable-width" { (post_form_error) }
-                    p class="readable-width" {
-                        a href="/forgot-password" {
-                            "Follow this link to request a new password reset email"
-                        }
+                    p class="my-4 max-w-prose text-red-600" { (post_form_error) }
+                    p class="my-4 max-w-prose" {
+                        (link(LinkProps {
+                            destination: "/forgot-password",
+                            title: "Follow this link to request a new password reset email",
+                            ..Default::default()
+                        }))
                         ". The link in the email will be valid for 24 hours."
                     }
                 }
@@ -305,13 +314,13 @@ pub async fn post(
         .with_subtitle("reset password")
         .targeted(hx_target)
         .render(html! {
-            div class="center-horizontal" {
-                header class="center-text" {
-                    h2 { "Password reset!" }
+            div class="w-fit mx-auto" {
+                header class="text-center" {
+                    h2 class="mb-4 text-2xl font-medium" { "Password reset!" }
                 }
-                p class="readable-width" {
+                p class="my-4 max-w-prose" {
                     "Your password has been reset. "
-                    a href="/" { "Return home" }
+                    (link(LinkProps { destination: "/", title: "Return home", ..Default::default() }))
                 }
             }
         }))

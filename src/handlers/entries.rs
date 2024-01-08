@@ -11,5 +11,5 @@ pub async fn get(
     State(pool): State<PgPool>,
 ) -> Result<Markup> {
     let entries = Entry::get_all(&pool, &options).await?;
-    Ok(entry_list(entries, &options))
+    Ok(entry_list(entries, &options, false))
 }

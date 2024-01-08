@@ -43,9 +43,9 @@ pub fn login_page(
         .with_subtitle("login")
         .targeted(hx_target)
         .render(html! {
-            div class="center-horizontal" {
-                header class="center-text" {
-                    h2 { "Login" }
+            div class="w-fit mx-auto" {
+                header class="text-center" {
+                    h2 class="mb-4 text-2xl font-medium" { "Login" }
                 }
                 (login_form(form_props))
             }

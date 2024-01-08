@@ -17,8 +17,8 @@ pub async fn get(
     let options = Default::default();
     let entries = Entry::get_all(&pool, &options).await?;
     Ok(layout.targeted(hx_target).render(html! {
-        ul class="entries" {
-            (entry_list(entries, &options))
+        ul class="list-none flex flex-col gap-4" {
+            (entry_list(entries, &options, true))
         }
     }))
 }

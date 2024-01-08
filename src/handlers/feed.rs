@@ -41,17 +41,20 @@ pub async fn get(
     let entries = Entry::get_all(&pool, &options).await?;
     let delete_url = format!("/feed/{}/delete", id);
     Ok(layout.with_subtitle(&title).targeted(hx_target).render(html! {
-        header class="feed-header" {
-            h2 { (title) }
-            button class="edit-feed" { "✏️ Edit feed" }
+        header class="mb-4 flex flex-row items-center gap-4" {
+            h2 class="text-2xl font-medium" { (title) }
+            button class="py-2 px-4 font-medium rounded-md border border-gray-200" { "✏️ Edit feed" }
             form action=(delete_url) method="post" {
-                button type="submit" class="remove-feed" data-controller="remove-feed" { "❌ Remove feed" }
+                button type="submit" class="py-2 px-4 font-medium rounded-md border border-gray-200" { "❌ Remove feed" }
             }
         }
         @if let Some(description) = feed.description {
-            p { (description) }
+            p class="mb-4" { (description) }
         }
-        (entry_list(entries, &options))
+        hr class="my-4";
+        ul id="entry-list" class="list-none flex flex-col gap-4" {
+            (entry_list(entries, &options, true))
+        }
     }))
 }
 
@@ -101,8 +104,8 @@ impl IntoResponse for AddFeedError {
             self.status_code(),
             html! {
                 (add_feed_form())
-                ul class="stream-messages" {
-                    li { span class="error" { (self) } }
+                ul class="overflow-x-hidden whitespace-nowrap text-ellipsis" {
+                    li { span class="text-red-600" { (self) } }
                 }
             }
             .into_string(),
@@ -145,15 +148,22 @@ pub async fn post(
         crawls.insert(feed.feed_id, receiver);
     }
 
-    let feed_stream = format!("connect:/feed/{}/stream", Base62Uuid::from(feed.feed_id));
+    let feed_stream = format!(
+        "connect:/feed/{}/stream swap:message",
+        Base62Uuid::from(feed.feed_id)
+    );
     Ok((
         StatusCode::CREATED,
         html! {
             (add_feed_form())
-            div hx-sse=(feed_stream) {
-                ul class="stream-messages" hx-sse="swap:message" hx-swap="beforeend" {
-                    li { "Fetching feed..." }
-                }
+            ul
+                id="add-feed-messages"
+                class="overflow-x-hidden whitespace-nowrap text-ellipsis"
+                hx-sse=(feed_stream)
+                hx-swap="beforeend"
+                hx-target="#add-feed-messages"
+            {
+                li { "Fetching feed..." }
             }
         }
         .into_string(),
@@ -178,7 +188,7 @@ pub async fn stream(
             Ok::<Event, String>(
                 Event::default().data(
                     html! {
-                        li { "Crawled feed: " (feed_link(&feed, false)) }
+                        li hx-target="#main-content" hx-swap="innerHTML" { "Crawled feed: " (feed_link(&feed)) }
                     }
                     .into_string(),
                 ),
@@ -188,7 +198,7 @@ pub async fn stream(
             entry,
         )))) => Ok(Event::default().data(
             html! {
-                li { "Crawled entry: " (entry_link(&entry)) }
+                li hx-target="#main-content" hx-swap="innerHTML" { "Crawled entry: " (entry_link(&entry)) }
             }
             .into_string(),
         )),
@@ -196,7 +206,7 @@ pub async fn stream(
             error,
         )))) => Ok(Event::default().data(
             html! {
-                li id=(feed_id) { span class="error" { (error) } }
+                li id=(feed_id) { span class="text-red-600" { (error) } }
             }
             .into_string(),
         )),
@@ -204,13 +214,13 @@ pub async fn stream(
             error,
         )))) => Ok(Event::default().data(
             html! {
-                li { span class="error" { (error) } }
+                li { span class="text-red-600" { (error) } }
             }
             .into_string(),
         )),
         Ok(CrawlSchedulerHandleMessage::Schedule(Err(error))) => Ok(Event::default().data(
             html! {
-                li { span class="error" { (error) } }
+                li { span class="text-red-600" { (error) } }
             }
             .into_string(),
         )),

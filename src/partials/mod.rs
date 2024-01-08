@@ -8,6 +8,7 @@ pub mod footer;
 pub mod forgot_password_form;
 pub mod header;
 pub mod layout;
+pub mod link;
 pub mod login_form;
 pub mod opml_import_form;
 pub mod register_form;

@@ -33,11 +33,11 @@ pub fn forgot_password_page(
         .with_subtitle("forgot password")
         .targeted(hx_target)
         .render(html! {
-            div class="center-horizontal" {
-                header class="center-text" {
-                    h2 { "Forgot Password" }
+            div class="w-fit mx-auto" {
+                header class="text-center" {
+                    h2 class="mb-4 text-2xl font-medium" { "Forgot Password" }
                 }
-                p class="readable-width" {
+                p class="my-4 max-w-prose" {
                     "A password reset email will be sent if the email submitted matches an account in the system and the email is verfied. If your email is not verified, " a href="/confirm-email" { "please verify your email first" } "."
                 }
                 (forgot_password_form(form_props))
@@ -54,11 +54,11 @@ pub fn confirm_forgot_password_sent_page(
         .with_subtitle("forgot password")
         .targeted(hx_target)
         .render(html! {
-            div class="center-horizontal" {
-                header class="center-text" {
-                    h2 { "Reset password email sent" }
+            div class="w-fit mx-auto" {
+                header class="text-center" {
+                    h2 class="mb-4 text-2xl font-medium" { "Reset password email sent" }
                 }
-                p class="readable-width" {
+                p class="my-4 max-w-prose" {
                     "If the email you entered matched an existing account with a verified email, then a password reset email was sent. Please follow the link sent in the email."
                 }
             }

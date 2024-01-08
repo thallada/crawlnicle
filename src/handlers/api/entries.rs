@@ -22,6 +22,6 @@ pub async fn get(
         }
     }
     Ok(ApiResponse::Html(
-        entry_list(entries, &options).into_string(),
+        entry_list(entries, &options, false).into_string(),
     ))
 }

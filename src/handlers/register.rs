@@ -41,9 +41,9 @@ pub fn register_page(
         .with_subtitle("register")
         .targeted(hx_target)
         .render(html! {
-            div class="center-horizontal" {
-                header class="center-text" {
-                    h2 { "Register" }
+            div class="w-fit mx-auto" {
+                header class="text-center" {
+                    h2 class="mb-4 text-2xl font-medium" { "Register" }
                 }
                 (register_form(form_props))
             }

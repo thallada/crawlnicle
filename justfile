@@ -8,6 +8,7 @@ clean-frontend:
   rm -rf ./static/js/* ./static/css/* ./static/img/*
 
 build-frontend: clean-frontend
+  bunx tailwindcss -i frontend/css/styles.css -o static/css/styles.css --minify
   bun build frontend/js/index.ts \
     --outdir ./static \
     --root ./frontend \
@@ -22,6 +23,7 @@ build-frontend: clean-frontend
   touch .frontend-built # trigger build.rs to run
 
 build-dev-frontend: clean-frontend
+  bunx tailwindcss -i frontend/css/styles.css -o static/css/styles.css
   bun build frontend/js/index.ts \
     --outdir ./static \
     --root ./frontend \
@@ -38,14 +40,19 @@ watch-frontend: install-frontend
   cargo watch -w frontend \
     -s 'just build-dev-frontend'
 
+build-dev-backend: build-dev-frontend
+  cargo run
+
 watch-backend:
   mold -run cargo watch \
     --ignore 'logs/*' \
     --ignore 'static/*' \
     --ignore 'frontend/*' \
+    --ignore 'content' \
     --ignore 'content/*' \
     --no-vcs-ignores \
-    -x run
+    --why \
+    -s 'just build-dev-backend'
 
 # runs watch-frontend and watch-backend simultaneously
 watch:

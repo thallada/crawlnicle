@@ -28,7 +28,7 @@ pub async fn get(hx_target: Option<TypedHeader<HXTarget>>, layout: Layout) -> Re
         .with_subtitle("log")
         .targeted(hx_target)
         .render(html! {
-            pre id="log" hx-sse="connect:/log/stream swap:message" hx-swap="beforeend" hx-target="#log" {
+            pre id="log" class="text-sm" hx-sse="connect:/log/stream swap:message" hx-swap="beforeend" hx-target="#log" {
                 (PreEscaped(convert(from_utf8(mem_buf.as_slices().0).unwrap()).unwrap()))
             }
         }))

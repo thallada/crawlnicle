@@ -32,12 +32,14 @@ pub async fn get(
         .with_subtitle(&title)
         .targeted(hx_target)
         .render(html! {
-            article {
+            article class="prose lg:prose-xl my-6 mx-auto prose-a:text-blue-600 prose-a:no-underline visited:prose-a:text-purple-600 hover:prose-a:underline" {
                 header {
-                    h2 class="title" { a href=(entry.url) { (title) } }
+                    h2 class="mb-4 text-2xl font-medium" {
+                        a href=(entry.url) { (title) }
+                    }
                 }
                 div {
-                    span class="published" {
+                    span class="text-sm text-gray-600" {
                         strong { "Published: " }
                         time datetime=(published_at) class="local-time" {
                             (published_at)

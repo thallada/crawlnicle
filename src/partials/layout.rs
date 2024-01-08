@@ -154,6 +154,7 @@ impl Layout {
                 html lang="en" {
                     head {
                         meta charset="utf-8";
+                        meta name="viewport" content="width=device-width, initial-scale=1.0";
                         title { (self.full_title()) }
                         @for js_file in js_manifest() {
                             script type="module" src=(js_file) {}
@@ -162,9 +163,9 @@ impl Layout {
                             link rel="stylesheet" href=(css_file) {}
                         }
                     }
-                    body hx-boost="true" hx-target="#main-content" {
+                    body hx-boost="true" hx-target="#main-content" class="mx-2 text-gray-950" {
                         (header(&self.title, self.user))
-                        main id="main-content" { (template) }
+                        main id="main-content" class="my-6 mx-2 md:mx-4" { (template) }
                         (footer())
                     }
                 }

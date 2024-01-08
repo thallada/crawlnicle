@@ -1,7 +1,7 @@
 import htmx from 'htmx.org';
 
 // import assets so they get named with a content hash that busts caches
-import '../css/styles.css';
+// import '../css/styles.css';
 
 import './localTimeController';
 

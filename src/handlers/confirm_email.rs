@@ -19,6 +19,7 @@ use crate::models::user::User;
 use crate::models::user_email_verification_token::UserEmailVerificationToken;
 use crate::partials::confirm_email_form::{confirm_email_form, ConfirmEmailFormProps};
 use crate::partials::layout::Layout;
+use crate::partials::link::{link, LinkProps};
 use crate::uuid::Base62Uuid;
 
 #[derive(Deserialize)]
@@ -48,16 +49,18 @@ pub fn confirm_email_page(
         .with_subtitle("confirm email")
         .targeted(hx_target)
         .render(html! {
-            div class="center-horizontal" {
-                header class="center-text" {
-                    h2 { (header.unwrap_or("Confirm your email address")) }
+            div class="w-fit mx-auto" {
+                header class="text-center" {
+                    h2 class="mb-4 text-2xl font-medium" {
+                        (header.unwrap_or("Confirm your email address"))
+                    }
                 }
                 @if let Some(desc) = desc {
                     (desc)
                 } @else {
-                    p class="readable-width" {
+                    p class="my-4 max-w-prose" {
                         "Enter your email to resend the confirmation email. If you don't have an account yet, create one "
-                        a href="/register" { "here" }
+                        (link(LinkProps { destination: "/register", title: "here", ..Default::default() }))
                         "."
                     }
                 }
@@ -102,7 +105,7 @@ pub async fn get(
                 },
                 header: Some("Email verification token is expired"),
                 desc: Some(html! {
-                    p class="readable-width" {
+                    p class="my-4 max-w-prose" {
                         "Click the button below to resend a new confirmation email. The link in the email will be valid for another 24 hours."
                     }
                 }),
@@ -115,13 +118,13 @@ pub async fn get(
                 .with_subtitle("confirm email")
                 .targeted(hx_target)
                 .render(html! {
-                    div class="center-horizontal" {
-                        header class="center-text" {
-                            h2 { "Your email is now confirmed!" }
+                    div class="w-fit mx-auto" {
+                        header class="text-center" {
+                            h2 class="mb-4 text-2xl font-medium" { "Your email is now confirmed!" }
                         }
-                        p class="readable-width" {
+                        p class="my-4 max-w-prose" {
                             "Thanks for verifying your email address. "
-                            a href="/" { "Return home" }
+                            (link(LinkProps { destination: "/", title: "Return home", ..Default::default() }))
                         }
                     }
                 }))
@@ -170,11 +173,11 @@ pub async fn post(
             .with_subtitle("confirm email")
             .targeted(hx_target)
             .render(html! {
-                div class="center-horizontal" {
-                    header class="center-text" {
-                        h2 { "Resent confirmation email" }
+                div class="w-fit mx-auto" {
+                    header class="text-center" {
+                        h2 class="mb-4 text-2xl font-medium" { "Resent confirmation email" }
                     }
-                    p class="readable-width" {
+                    p class="my-4 max-w-prose" {
                         "Please follow the link sent in the email."
                     }
                 }
@@ -193,11 +196,11 @@ pub async fn post(
             .with_subtitle("confirm email")
             .targeted(hx_target)
             .render(html! {
-                div class="center-horizontal" {
-                    header class="center-text" {
-                        h2 { "Resent confirmation email" }
+                div class="w-fit mx-auto" {
+                    header class="text-center" {
+                        h2 class="mb-4 text-2xl font-medium" { "Resent confirmation email" }
                     }
-                    p class="readable-width" {
+                    p class="my-4 max-w-prose" {
                         "If the email you entered matched an existing account, then a confirmation email was sent. Please follow the link sent in the email."
                     }
                 }
@@ -209,9 +212,9 @@ pub async fn post(
         form_props: ConfirmEmailFormProps::default(),
         header: Some("Email verification token not found"),
         desc: Some(html! {
-            p class="readable-width" {
+            p class="my-4 max-w-prose" {
             "Enter your email to resend the confirmation email. If you don't have an account yet, create one "
-            a href="/register" { "here" }
+            (link(LinkProps { destination: "/register", title: "here", ..Default::default() }))
             "."
             }
         }),

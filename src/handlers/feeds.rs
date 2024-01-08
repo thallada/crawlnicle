@@ -23,13 +23,13 @@ pub async fn get(
         .with_subtitle("feeds")
         .targeted(hx_target)
         .render(html! {
-            header { h2 { "Feeds" } }
-            div class="feeds" {
-                ul id="feeds" {
-                    (feed_list(feeds, &options))
+            header { h2 class="mb-4 text-2xl font-medium" { "Feeds" } }
+            div class="flex flex-col gap-6 lg:flex-row md:justify-between" {
+                ul id="feed-list" class="list-none flex flex-col gap-4" {
+                    (feed_list(feeds, &options, true))
                 }
-                div class="add-feed" {
-                    h3 { "Add Feed" }
+                div class="flex flex-col gap-6 max-w-md" {
+                    h3 class="text-xl font-medium" { "Add Feed" }
                     (add_feed_form())
                     (opml_import_form())
                 }

@@ -33,15 +33,19 @@ pub async fn opml(
             imports.insert(import_id.as_uuid(), receiver);
         }
 
-        let import_stream = format!("connnect:/import/{}/stream", import_id);
+        let import_stream = format!("connnect:/import/{}/stream swap:message", import_id);
         return Ok((
             StatusCode::CREATED,
             html! {
                 (opml_import_form())
-                div hx-sse=(import_stream) {
-                    ul class="stream-messages" hx-sse="swap:message" hx-swap="beforeend" {
-                        li { "Uploading..."}
-                    }
+                ul
+                    id="import-feeds-messages"
+                    class="overflow-x-hidden whitespace-nowrap text-ellipsis"
+                    hx-sse=(import_stream)
+                    hx-swap="beforeend"
+                    hx-target="#import-feeds-messages"
+                {
+                    li { "Uploading..."}
                 }
             }
             .into_string(),
@@ -76,7 +80,7 @@ pub async fn stream(
         ))) => Ok::<Event, String>(
             Event::default().data(
                 html! {
-                    li { "Crawled entry: " (entry_link(&entry)) }
+                    li hx-target="#main-content" hx-swap="innerHTML" { "Crawled entry: " (entry_link(&entry)) }
                 }
                 .into_string(),
             ),
@@ -86,7 +90,7 @@ pub async fn stream(
         ))) => Ok::<Event, String>(
             Event::default().data(
                 html! {
-                    li { "Crawled feed: " (feed_link(&feed, false)) }
+                    li hx-target="#main-content" hx-swap="innerHTML" { "Crawled feed: " (feed_link(&feed)) }
                 }
                 .into_string(),
             ),
@@ -96,7 +100,7 @@ pub async fn stream(
         ))) => Ok::<Event, String>(
             Event::default().data(
                 html! {
-                    li { span class="error" { (error) } }
+                    li { span class="text-red-600" { (error) } }
                 }
                 .into_string(),
             ),
@@ -106,7 +110,7 @@ pub async fn stream(
         ))) => Ok::<Event, String>(
             Event::default().data(
                 html! {
-                    li { span class="error" { (error) } }
+                    li { span class="text-red-600" { (error) } }
                 }
                 .into_string(),
             ),
@@ -116,7 +120,7 @@ pub async fn stream(
         )))) => Ok::<Event, String>(
             Event::default().data(
                 html! {
-                    li { span class="error" { (error) } }
+                    li { span class="text-red-600" { (error) } }
                 }
                 .into_string(),
             ),
@@ -125,7 +129,7 @@ pub async fn stream(
             Event::default().data(
                 html! {
                     li {
-                        span class="error" {
+                        span class="text-red-600" {
                             "Could not create feed for url: " a href=(url) { (url) }
                         }
                     }
@@ -135,7 +139,7 @@ pub async fn stream(
         ),
         Ok(ImporterHandleMessage::Import(Err(error))) => Ok(Event::default().data(
             html! {
-                li { span class="error" { (error) } }
+                li { span class="text-red-600" { (error) } }
             }
             .into_string(),
         )),

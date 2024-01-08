@@ -21,5 +21,7 @@ pub async fn get(
             return Ok::<ApiResponse<Vec<Feed>>, Error>(ApiResponse::Json(feeds));
         }
     }
-    Ok(ApiResponse::Html(feed_list(feeds, &options).into_string()))
+    Ok(ApiResponse::Html(
+        feed_list(feeds, &options, false).into_string(),
+    ))
 }
