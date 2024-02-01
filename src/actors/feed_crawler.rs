@@ -200,7 +200,13 @@ impl FeedCrawler {
         let last_entry_published_at = parsed_feed.entries.iter().filter_map(|e| e.published).max();
         if let Some(prev_last_entry_published_at) = feed.last_entry_published_at {
             if let Some(published_at) = last_entry_published_at {
-                let time_since_last_entry = published_at - prev_last_entry_published_at;
+                let time_since_last_entry = if published_at == prev_last_entry_published_at {
+                    // No new entry since last crawl, compare current time to last publish instead
+                    Utc::now() - prev_last_entry_published_at
+                } else {
+                    // Compare new entry publish time to previous publish time
+                    published_at - prev_last_entry_published_at
+                };
                 match time_since_last_entry
                     .cmp(&Duration::minutes(feed.crawl_interval_minutes.into()))
                 {
