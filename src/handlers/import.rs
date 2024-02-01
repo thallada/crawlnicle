@@ -33,7 +33,7 @@ pub async fn opml(
             imports.insert(import_id.as_uuid(), receiver);
         }
 
-        let import_stream = format!("connnect:/import/{}/stream swap:message", import_id);
+        let import_stream = format!("connect:/import/{}/stream swap:message", import_id);
         return Ok((
             StatusCode::CREATED,
             html! {

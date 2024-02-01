@@ -3,9 +3,13 @@ use maud::{html, Markup, PreEscaped};
 pub fn opml_import_form() -> Markup {
     html! {
         form
+            action="/import/opml"
+            method="post"
             id="opml-import-form"
             hx-post="/import/opml"
             hx-encoding="multipart/form-data"
+            hx-target="#opml-import-form"
+            hx-swap="outerHTML"
             class="flex flex-row gap-6 items-end justify-between"
         {
             div class="grow w-full" {
@@ -21,17 +25,6 @@ pub fn opml_import_form() -> Markup {
             div class="whitespace-nowrap" {
                 button type="submit" class="py-2 px-4 font-medium rounded-md border border-gray-200" { "Import Feeds" }
             }
-        }
-        progress id="opml-upload-progress" max="100" value="0" hidden="true" {}
-        script {
-            (PreEscaped(r#"
-                htmx.on('#opml-import-form', 'htmx:xhr:progress', function (evt) {
-                    htmx.find('#opml-upload-progress').setAttribute(
-                        'value',
-                        evt.detail.loaded / evt.detail.total * 100,
-                    );
-                });
-            "#))
         }
     }
 }
