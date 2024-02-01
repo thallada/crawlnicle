@@ -127,6 +127,12 @@ pub struct GetFeedsOptions {
 }
 
 impl Feed {
+    pub fn next_crawl_time(&self) -> Option<DateTime<Utc>> {
+        self.last_crawled_at.map(|last_crawled_at| {
+            last_crawled_at + chrono::Duration::minutes(self.crawl_interval_minutes as i64)
+        })
+    }
+
     pub async fn get(db: impl Executor<'_, Database = Postgres>, feed_id: Uuid) -> Result<Feed> {
         sqlx::query_as!(
             Feed,

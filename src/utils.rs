@@ -1,3 +1,4 @@
+use chrono::{DateTime, SecondsFormat, Utc};
 use url::Url;
 
 pub fn get_domain(url: &str) -> Option<String> {
@@ -11,4 +12,18 @@ pub fn get_domain(url: &str) -> Option<String> {
                 domain
             }
         })
+}
+
+pub struct FormattedUtcTimestamp {
+    pub rfc3339: String,
+    pub human_readable: String,
+}
+
+impl From<DateTime<Utc>> for FormattedUtcTimestamp {
+    fn from(dt: DateTime<Utc>) -> Self {
+        FormattedUtcTimestamp {
+            rfc3339: dt.to_rfc3339_opts(SecondsFormat::Millis, true),
+            human_readable: dt.format("%Y-%m-%d %H:%M:%S %Z").to_string(),
+        }
+    }
 }

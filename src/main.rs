@@ -3,7 +3,6 @@ use std::{collections::HashMap, net::SocketAddr, path::Path, sync::Arc};
 use anyhow::Result;
 use axum::{
     error_handling::HandleErrorLayer,
-    response::Response,
     routing::{get, post},
     BoxError, Router,
 };

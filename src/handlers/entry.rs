@@ -11,6 +11,7 @@ use crate::error::Result;
 use crate::htmx::HXTarget;
 use crate::models::entry::Entry;
 use crate::partials::layout::Layout;
+use crate::partials::time::date_time;
 use crate::uuid::Base62Uuid;
 
 pub async fn get(
@@ -24,9 +25,6 @@ pub async fn get(
     let content_dir = std::path::Path::new(&config.content_dir);
     let content_path = content_dir.join(format!("{}.html", entry.entry_id));
     let title = entry.title.unwrap_or_else(|| "Untitled Entry".to_string());
-    let published_at = entry
-        .published_at
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
     let content = fs::read_to_string(content_path).unwrap_or_else(|_| "No content".to_string());
     Ok(layout
         .with_subtitle(&title)
@@ -41,9 +39,7 @@ pub async fn get(
                 div {
                     span class="text-sm text-gray-600" {
                         strong { "Published: " }
-                        time datetime=(published_at) class="local-time" {
-                            (published_at)
-                        }
+                        (date_time(entry.published_at))
                     }
                 }
                 (PreEscaped(content))

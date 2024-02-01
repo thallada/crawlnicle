@@ -13,4 +13,5 @@ pub mod login_form;
 pub mod opml_import_form;
 pub mod register_form;
 pub mod reset_password_form;
+pub mod time;
 pub mod user_name;

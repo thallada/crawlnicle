@@ -1,4 +1,4 @@
-use maud::{html, Markup, PreEscaped};
+use maud::{html, Markup};
 
 pub fn opml_import_form() -> Markup {
     html! {
