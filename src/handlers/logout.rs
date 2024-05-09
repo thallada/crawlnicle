@@ -7,6 +7,7 @@ use crate::htmx::HXRedirect;
 
 pub async fn get(mut auth: AuthSession) -> Result<Response> {
     auth.logout()
+        .await
         .context("failed to logout user from session")?;
     Ok(HXRedirect::to("/").reload(true).into_response())
 }

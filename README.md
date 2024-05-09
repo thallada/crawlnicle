@@ -9,25 +9,26 @@ algorithm. Pining for the days of Google Reader. An excuse to write more Rust.
 
 Install these requirements to get started developing crawlnicle.
 
-* [rust](https://www.rust-lang.org/)
-* [postgres](https://www.postgresql.org/)
-* [redis](https://redis.io/)
-* [sqlx-cli](https://crates.io/crates/sqlx-cli)
-  * Only postgres needed. Install with:
+- [rust](https://www.rust-lang.org/)
+- [postgres](https://www.postgresql.org/)
+- [redis](https://redis.io/)
+- [sqlx-cli](https://crates.io/crates/sqlx-cli)
 
-   ```bash
-   cargo install sqlx-cli --no-default-features --features native-tls,postgres
-   ```
+  - Only postgres needed. Install with:
 
-* [just](https://github.com/casey/just#installation)
-* [bun](https://bun.sh)
-* An [SMTP server for sending 
-emails](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol) (put
-configuration in the `.env` file)
-* (optional) [cargo-watch](https://github.com/watchexec/cargo-watch#install) for
-auto-recompiling the server in development
-* (optional) [mold](https://github.com/rui314/mold#installation) for faster
-builds
+  ```bash
+  cargo install sqlx-cli --no-default-features --features native-tls,postgres
+  ```
+
+- [just](https://github.com/casey/just#installation)
+- [bun](https://bun.sh)
+- An [SMTP server for sending
+  emails](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol) (put
+  configuration in the `.env` file)
+- (optional) [cargo-watch](https://github.com/watchexec/cargo-watch#install) for
+  auto-recompiling the server in development
+- (optional) [mold](https://github.com/rui314/mold#installation) for faster
+  builds
 
 ### First-time setup
 
@@ -69,7 +70,7 @@ builds
    SMTP_USER=user
    SMTP_PASSWORD=password
    EMAIL_FROM="crawlnicle <no-reply@mail.crawlnicle.com>"
-   SESSION_SECRET=64-bytes-of-secret
+   SESSION_SECRET=64-bytes-of-base64-encoded-secret
    IP_SOURCE=ConnectInfo
    ```
 

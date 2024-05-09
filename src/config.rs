@@ -60,7 +60,7 @@ pub struct Config {
     #[clap(long, env, default_value = "crawlnicle <no-reply@mail.crawlnicle.com>")]
     pub email_from: Mailbox,
     #[clap(long, env)]
-    pub session_secret: String,
+    pub session_secret: String, // base64 encoded
     #[clap(long, env, default_value = "ConnectInfo")]
     pub ip_source: IpSource,
     #[clap(long, env, default_value = "100")]

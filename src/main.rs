@@ -2,19 +2,18 @@ use std::{collections::HashMap, net::SocketAddr, path::Path, sync::Arc};
 
 use anyhow::Result;
 use axum::{
-    error_handling::HandleErrorLayer,
     routing::{get, post},
-    BoxError, Router,
+    Router,
 };
 use axum_login::{
     login_required,
-    tower_sessions::{fred::prelude::*, Expiry, RedisStore, SessionManagerLayer},
+    tower_sessions::{Expiry, SessionManagerLayer},
     AuthManagerLayerBuilder,
 };
+use base64::prelude::*;
 use bytes::Bytes;
 use clap::Parser;
 use dotenvy::dotenv;
-use http::StatusCode;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::SmtpTransport;
 use notify::Watcher;
@@ -26,6 +25,8 @@ use tokio::sync::Mutex;
 use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tower_livereload::LiveReloadLayer;
+use tower_sessions::cookie::Key;
+use tower_sessions_redis_store::{fred::prelude::*, RedisStore};
 use tracing::debug;
 
 use lib::config::Config;
@@ -62,9 +63,6 @@ async fn main() -> Result<()> {
     let domain_locks = DomainLocks::new();
     let client = Client::builder().user_agent(USER_AGENT).build()?;
 
-    // TODO: not needed anymore?
-    // let secret = config.session_secret.as_bytes();
-
     let pool = PgPoolOptions::new()
         .max_connections(config.database_max_connections)
         .acquire_timeout(std::time::Duration::from_secs(3))
@@ -72,34 +70,25 @@ async fn main() -> Result<()> {
         .await?;
 
     let redis_config = RedisConfig::from_url(&config.redis_url)?;
-    // TODO: https://github.com/maxcountryman/tower-sessions/issues/92
-    // let redis_pool = RedisPool::new(redis_config, None, None, config.redis_pool_size)?;
-    // redis_pool.connect();
-    // redis_pool.wait_for_connect().await?;
-    let redis_client = RedisClient::new(redis_config, None, None, None);
-    redis_client.connect();
-    redis_client.wait_for_connect().await?;
+    let redis_pool = RedisPool::new(redis_config, None, None, None, config.redis_pool_size)?;
+    redis_pool.init().await?;
 
-    let session_store = RedisStore::new(redis_client);
+    let session_store = RedisStore::new(redis_pool);
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(!cfg!(debug_assertions))
         .with_expiry(Expiry::OnInactivity(Duration::days(
             config.session_duration_days,
-        )));
+        )))
+        .with_signed(Key::from(&BASE64_STANDARD.decode(&config.session_secret)?));
 
     let backend = Backend::new(pool.clone());
-    let auth_service = ServiceBuilder::new()
-        .layer(HandleErrorLayer::new(|_: BoxError| async {
-            StatusCode::BAD_REQUEST
-        }))
-        .layer(AuthManagerLayerBuilder::new(backend, session_layer).build());
+    let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
-    let creds = Credentials::new(config.smtp_user.clone(), config.smtp_password.clone());
-
+    let smtp_creds = Credentials::new(config.smtp_user.clone(), config.smtp_password.clone());
     // Open a remote connection to gmail
     let mailer = SmtpTransport::relay(&config.smtp_server)
         .unwrap()
-        .credentials(creds)
+        .credentials(smtp_creds)
         .build();
 
     sqlx::migrate!().run(&pool).await?;
@@ -163,7 +152,7 @@ async fn main() -> Result<()> {
             mailer,
         })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
-        .layer(auth_service)
+        .layer(auth_layer)
         .layer(ip_source_extension);
 
     if cfg!(debug_assertions) {
