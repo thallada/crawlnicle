@@ -5,7 +5,10 @@ use anyhow::Result;
 use bytes::Bytes;
 use once_cell::sync::Lazy;
 use tokio::sync::watch::Sender;
+use tracing::level_filters::LevelFilter;
+use tracing::Level;
 use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::filter::Targets;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 
@@ -75,8 +78,8 @@ pub fn init_tracing(
     config: &Config,
     log_sender: Sender<Bytes>,
 ) -> Result<(WorkerGuard, WorkerGuard)> {
-    let fmt_layer = tracing_subscriber::fmt::layer();
-    let filter_layer = EnvFilter::from_default_env();
+    let console_layer = console_subscriber::spawn();
+    let stdout_layer = tracing_subscriber::fmt::layer().pretty();
     let file_appender = tracing_appender::rolling::hourly("./logs", "log");
     let (file_writer, file_writer_guard) = tracing_appender::non_blocking(file_appender);
     let mem_writer = LimitedInMemoryBuffer::new(&MEM_LOG, log_sender, config.max_mem_log_size);
@@ -84,10 +87,33 @@ pub fn init_tracing(
     let file_writer_layer = tracing_subscriber::fmt::layer().with_writer(file_writer);
     let mem_writer_layer = tracing_subscriber::fmt::layer().with_writer(mem_writer);
     tracing_subscriber::registry()
-        .with(filter_layer)
-        .with(fmt_layer)
-        .with(file_writer_layer)
-        .with(mem_writer_layer)
+        .with(
+            EnvFilter::from_default_env()
+                .add_directive("tokio=trace".parse()?)
+                .add_directive("runtime=trace".parse()?),
+        )
+        .with(console_layer)
+        .with(
+            stdout_layer.with_filter(
+                EnvFilter::from_default_env()
+                    .add_directive("tokio=off".parse()?)
+                    .add_directive("runtime=off".parse()?),
+            ),
+        )
+        .with(
+            file_writer_layer.with_filter(
+                EnvFilter::from_default_env()
+                    .add_directive("tokio=off".parse()?)
+                    .add_directive("runtime=off".parse()?),
+            ),
+        )
+        .with(
+            mem_writer_layer.with_filter(
+                EnvFilter::from_default_env()
+                    .add_directive("tokio=off".parse()?)
+                    .add_directive("runtime=off".parse()?),
+            ),
+        )
         .init();
     Ok((file_writer_guard, mem_writer_guard))
 }
