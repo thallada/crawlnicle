@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use apalis::redis::RedisStorage;
 use axum::extract::FromRef;
 use bytes::Bytes;
 use lettre::SmtpTransport;
@@ -9,10 +10,11 @@ use sqlx::PgPool;
 use tokio::sync::{broadcast, watch, Mutex};
 use uuid::Uuid;
 
-use crate::actors::importer::{ImporterHandle, ImporterHandleMessage};
 use crate::actors::crawl_scheduler::{CrawlSchedulerHandle, CrawlSchedulerHandleMessage};
+use crate::actors::importer::{ImporterHandle, ImporterHandleMessage};
 use crate::config::Config;
 use crate::domain_locks::DomainLocks;
+use crate::jobs::AsyncJob;
 
 /// A map of feed IDs to a channel receiver for the active `CrawlScheduler` running a feed crawl
 /// for that feed.
@@ -28,12 +30,12 @@ pub type Crawls = Arc<Mutex<HashMap<Uuid, broadcast::Receiver<CrawlSchedulerHand
 
 /// A map of unique import IDs to a channel receiver for the active `Importer` running that import.
 ///
-/// Same as the `Crawls` map, the only purpose of this is to keep track of active imports so that 
-/// axum handlers can subscribe to the result of the import via the receiver channel which are then 
+/// Same as the `Crawls` map, the only purpose of this is to keep track of active imports so that
+/// axum handlers can subscribe to the result of the import via the receiver channel which are then
 /// sent to end-users as a stream of server-sent events.
 ///
 /// This map should only contain imports that have just been created but not yet subscribed to.
-/// Entries are only added when a user adds uploads an OPML to import and entries are removed by 
+/// Entries are only added when a user adds uploads an OPML to import and entries are removed by
 /// the same user once a server-sent event connection is established.
 pub type Imports = Arc<Mutex<HashMap<Uuid, broadcast::Receiver<ImporterHandleMessage>>>>;
 
@@ -49,6 +51,7 @@ pub struct AppState {
     pub importer: ImporterHandle,
     pub imports: Imports,
     pub mailer: SmtpTransport,
+    pub apalis: RedisStorage<AsyncJob>,
 }
 
 impl FromRef<AppState> for PgPool {
@@ -108,5 +111,11 @@ impl FromRef<AppState> for Imports {
 impl FromRef<AppState> for SmtpTransport {
     fn from_ref(state: &AppState) -> Self {
         state.mailer.clone()
+    }
+}
+
+impl FromRef<AppState> for RedisStorage<AsyncJob> {
+    fn from_ref(state: &AppState) -> Self {
+        state.apalis.clone()
     }
 }

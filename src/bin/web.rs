@@ -1,6 +1,8 @@
 use std::{collections::HashMap, net::SocketAddr, path::Path, sync::Arc};
 
 use anyhow::Result;
+use apalis::prelude::*;
+use apalis::redis::RedisStorage;
 use axum::{
     routing::{get, post},
     Router,
@@ -32,6 +34,7 @@ use tracing::debug;
 use lib::config::Config;
 use lib::domain_locks::DomainLocks;
 use lib::handlers;
+use lib::jobs::AsyncJob;
 use lib::log::init_tracing;
 use lib::state::AppState;
 use lib::USER_AGENT;
@@ -93,6 +96,17 @@ async fn main() -> Result<()> {
 
     sqlx::migrate!().run(&pool).await?;
 
+    // TODO: use redis_pool from above instead of making a new connection
+    // See: https://github.com/geofmureithi/apalis/issues/290
+    let redis_conn = apalis::redis::connect(config.redis_url.clone()).await?;
+    let apalis_config = apalis::redis::Config::default();
+    let mut apalis: RedisStorage<AsyncJob> =
+        RedisStorage::new_with_config(redis_conn, apalis_config);
+
+    apalis
+        .push(AsyncJob::HelloWorld("hello".to_string()))
+        .await?;
+
     let crawl_scheduler = CrawlSchedulerHandle::new(
         pool.clone(),
         client.clone(),
@@ -150,6 +164,7 @@ async fn main() -> Result<()> {
             importer,
             imports,
             mailer,
+            apalis,
         })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .layer(auth_layer)

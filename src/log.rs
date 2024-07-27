@@ -91,3 +91,17 @@ pub fn init_tracing(
         .init();
     Ok((file_writer_guard, mem_writer_guard))
 }
+
+pub fn init_worker_tracing() -> Result<WorkerGuard> {
+    let stdout_layer = tracing_subscriber::fmt::layer().pretty();
+    let filter_layer = EnvFilter::from_default_env();
+    let file_appender = tracing_appender::rolling::hourly("./logs", "log");
+    let (file_writer, file_writer_guard) = tracing_appender::non_blocking(file_appender);
+    let file_writer_layer = tracing_subscriber::fmt::layer().with_writer(file_writer);
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(stdout_layer)
+        .with(file_writer_layer)
+        .init();
+    Ok(file_writer_guard)
+}

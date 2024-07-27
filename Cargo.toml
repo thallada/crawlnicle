@@ -2,7 +2,7 @@
 name = "crawlnicle"
 version = "0.1.0"
 edition = "2021"
-default-run = "crawlnicle"
+default-run = "web"
 authors = ["Tyler Hallada <tyler@hallada.net>"]
 
 [lib]
@@ -15,6 +15,7 @@ path = "src/lib.rs"
 ammonia = "4"
 ansi-to-html = "0.2"
 anyhow = "1"
+apalis = { version = "0.5", features = ["redis", "cron", "retry"] }
 async-trait = "0.1"
 axum = { version = "0.7", features = ["form", "multipart", "query"] }
 axum-client-ip = "0.6"
