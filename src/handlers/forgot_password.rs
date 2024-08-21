@@ -82,7 +82,7 @@ pub async fn get(
 }
 
 pub async fn post(
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
     State(mailer): State<SmtpTransport>,
     State(config): State<Config>,
     SecureClientIp(ip): SecureClientIp,
@@ -91,7 +91,7 @@ pub async fn post(
     layout: Layout,
     Form(forgot_password): Form<ForgotPassword>,
 ) -> Result<Response> {
-    let user: User = match User::get_by_email(&pool, forgot_password.email.clone()).await {
+    let user: User = match User::get_by_email(&db, forgot_password.email.clone()).await {
         Ok(user) => user,
         Err(err) => {
             if let Error::NotFoundString(_, _) = err {
@@ -105,7 +105,7 @@ pub async fn post(
     if user.email_verified {
         info!(user_id = %user.user_id, "user exists with verified email, sending password reset email");
         send_forgot_password_email(
-            pool,
+            db,
             mailer,
             config,
             user,

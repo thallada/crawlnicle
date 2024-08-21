@@ -13,9 +13,9 @@ use crate::partials::entry_list::entry_list;
 pub async fn get(
     Query(options): Query<GetEntriesOptions>,
     accept: Option<TypedHeader<Accept>>,
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    let entries = Entry::get_all(&pool, &options).await.map_err(Error::from)?;
+    let entries = Entry::get_all(&db, &options).await.map_err(Error::from)?;
     if let Some(TypedHeader(accept)) = accept {
         if accept == Accept::ApplicationJson {
             return Ok::<ApiResponse<Vec<Entry>>, Error>(ApiResponse::Json(entries));

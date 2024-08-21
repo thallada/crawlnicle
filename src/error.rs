@@ -27,7 +27,7 @@ pub enum Error {
     #[error("validation error in request body")]
     InvalidEntity(#[from] ValidationErrors),
 
-    #[error("error with file upload: (0)")]
+    #[error("error with file upload")]
     Upload(#[from] MultipartError),
 
     #[error("no file uploaded")]
@@ -49,7 +49,7 @@ pub enum Error {
     Unauthorized,
 
     #[error("bad request: {0}")]
-    BadRequest(&'static str)
+    BadRequest(&'static str),
 }
 
 pub type Result<T, E = Error> = ::std::result::Result<T, E>;

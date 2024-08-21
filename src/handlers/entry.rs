@@ -16,12 +16,12 @@ use crate::uuid::Base62Uuid;
 
 pub async fn get(
     Path(id): Path<Base62Uuid>,
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
     State(config): State<Config>,
     hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
 ) -> Result<Response> {
-    let entry = Entry::get(&pool, id.as_uuid()).await?;
+    let entry = Entry::get(&db, id.as_uuid()).await?;
     let content_dir = std::path::Path::new(&config.content_dir);
     let content_path = content_dir.join(format!("{}.html", entry.entry_id));
     let title = entry.title.unwrap_or_else(|| "Untitled Entry".to_string());

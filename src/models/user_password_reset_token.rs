@@ -32,7 +32,7 @@ impl UserPasswordResetToken {
     }
 
     pub async fn get(
-        pool: impl Executor<'_, Database = Postgres>,
+        db: impl Executor<'_, Database = Postgres>,
         token_id: Uuid,
     ) -> Result<UserPasswordResetToken> {
         sqlx::query_as!(
@@ -43,7 +43,7 @@ impl UserPasswordResetToken {
             where token_id = $1"#,
             token_id
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await
         .map_err(|error| {
             if let sqlx::error::Error::RowNotFound = error {
@@ -54,7 +54,7 @@ impl UserPasswordResetToken {
     }
 
     pub async fn create(
-        pool: impl Executor<'_, Database = Postgres>,
+        db: impl Executor<'_, Database = Postgres>,
         payload: CreatePasswordResetToken,
     ) -> Result<UserPasswordResetToken> {
         Ok(sqlx::query_as!(
@@ -70,20 +70,17 @@ impl UserPasswordResetToken {
             payload.request_ip,
             payload.expires_at
         )
-        .fetch_one(pool)
+        .fetch_one(db)
         .await?)
     }
 
-    pub async fn delete(
-        pool: impl Executor<'_, Database = Postgres>,
-        token_id: Uuid,
-    ) -> Result<()> {
+    pub async fn delete(db: impl Executor<'_, Database = Postgres>, token_id: Uuid) -> Result<()> {
         sqlx::query!(
             r#"delete from user_password_reset_token
             where token_id = $1"#,
             token_id
         )
-        .execute(pool)
+        .execute(db)
         .await?;
         Ok(())
     }

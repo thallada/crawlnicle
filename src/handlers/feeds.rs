@@ -13,12 +13,12 @@ use crate::partials::layout::Layout;
 use crate::partials::opml_import_form::opml_import_form;
 
 pub async fn get(
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
     hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
 ) -> Result<Response> {
     let options = GetFeedsOptions::default();
-    let feeds = Feed::get_all(&pool, &options).await?;
+    let feeds = Feed::get_all(&db, &options).await?;
     Ok(layout
         .with_subtitle("feeds")
         .targeted(hx_target)

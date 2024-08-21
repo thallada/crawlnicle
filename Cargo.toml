@@ -15,7 +15,10 @@ path = "src/lib.rs"
 ammonia = "4"
 ansi-to-html = "0.2"
 anyhow = "1"
-apalis = { version = "0.5", features = ["redis", "cron", "retry"] }
+# apalis v0.6 fixes this issue: https://github.com/geofmureithi/apalis/issues/351
+apalis = { version = "0.6.0-rc.5", features = ["retry"] }
+apalis-cron = "0.6.0-rc.5"
+apalis-redis = "0.6.0-rc.5"
 async-trait = "0.1"
 axum = { version = "0.7", features = ["form", "multipart", "query"] }
 axum-client-ip = "0.6"

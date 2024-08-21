@@ -56,7 +56,7 @@ Install these requirements to get started developing crawlnicle.
    directory with the contents:
 
    ```env
-   RUST_LOG=crawlnicle=debug,cli=debug,lib=debug,tower_http=debug,sqlx=debug
+   RUST_LOG=crawlnicle=debug,cli=debug,web=debug,worker=debug,crawler=debug,lib=debug,tower_http=debug,sqlx=debug
    HOST=127.0.0.1
    PORT=3000
    PUBLIC_URL=http://localhost:3000

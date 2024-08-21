@@ -59,7 +59,7 @@ pub async fn get(hx_target: Option<TypedHeader<HXTarget>>, layout: Layout) -> Re
 }
 
 pub async fn post(
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
     State(mailer): State<SmtpTransport>,
     State(config): State<Config>,
     mut auth: AuthSession,
@@ -80,7 +80,7 @@ pub async fn post(
         ));
     }
     let user = match User::create(
-        &pool,
+        &db,
         CreateUser {
             email: register.email.clone(),
             password: register.password.clone(),
@@ -144,7 +144,7 @@ pub async fn post(
         }
     };
 
-    send_confirmation_email(pool, mailer, config, user.clone());
+    send_confirmation_email(db, mailer, config, user.clone());
 
     auth.login(&user)
         .await

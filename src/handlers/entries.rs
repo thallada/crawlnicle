@@ -8,8 +8,8 @@ use crate::partials::entry_list::entry_list;
 
 pub async fn get(
     Query(options): Query<GetEntriesOptions>,
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
 ) -> Result<Markup> {
-    let entries = Entry::get_all(&pool, &options).await?;
+    let entries = Entry::get_all(&db, &options).await?;
     Ok(entry_list(entries, &options, false))
 }

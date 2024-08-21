@@ -18,7 +18,7 @@ use crate::uuid::Base62Uuid;
 const PASSWORD_RESET_TOKEN_EXPIRATION: Duration = Duration::from_secs(24 * 60 * 60);
 
 pub fn send_forgot_password_email(
-    pool: PgPool,
+    db: PgPool,
     mailer: SmtpTransport,
     config: Config,
     user: User,
@@ -35,7 +35,7 @@ pub fn send_forgot_password_email(
         };
         let mailbox = Mailbox::new(user.name.clone(), user_email_address);
         let token = match UserPasswordResetToken::create(
-            &pool,
+            &db,
             CreatePasswordResetToken {
                 token_id: Uuid::new_v4(), // cyptographically-secure random uuid
                 user_id: user.user_id,

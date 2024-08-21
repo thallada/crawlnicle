@@ -2,7 +2,7 @@ use std::{collections::HashMap, net::SocketAddr, path::Path, sync::Arc};
 
 use anyhow::Result;
 use apalis::prelude::*;
-use apalis::redis::RedisStorage;
+use apalis_redis::RedisStorage;
 use axum::{
     routing::{get, post},
     Router,
@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
     let domain_locks = DomainLocks::new();
     let client = Client::builder().user_agent(USER_AGENT).build()?;
 
-    let pool = PgPoolOptions::new()
+    let db = PgPoolOptions::new()
         .max_connections(config.database_max_connections)
         .acquire_timeout(std::time::Duration::from_secs(3))
         .connect(&config.database_url)
@@ -84,7 +84,7 @@ async fn main() -> Result<()> {
         )))
         .with_signed(Key::from(&BASE64_STANDARD.decode(&config.session_secret)?));
 
-    let backend = Backend::new(pool.clone());
+    let backend = Backend::new(db.clone());
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
     let smtp_creds = Credentials::new(config.smtp_user.clone(), config.smtp_password.clone());
@@ -94,12 +94,12 @@ async fn main() -> Result<()> {
         .credentials(smtp_creds)
         .build();
 
-    sqlx::migrate!().run(&pool).await?;
+    sqlx::migrate!().run(&db).await?;
 
     // TODO: use redis_pool from above instead of making a new connection
     // See: https://github.com/geofmureithi/apalis/issues/290
-    let redis_conn = apalis::redis::connect(config.redis_url.clone()).await?;
-    let apalis_config = apalis::redis::Config::default();
+    let redis_conn = apalis_redis::connect(config.redis_url.clone()).await?;
+    let apalis_config = apalis_redis::Config::default();
     let mut apalis: RedisStorage<AsyncJob> =
         RedisStorage::new_with_config(redis_conn, apalis_config);
 
@@ -108,14 +108,14 @@ async fn main() -> Result<()> {
         .await?;
 
     let crawl_scheduler = CrawlSchedulerHandle::new(
-        pool.clone(),
+        db.clone(),
         client.clone(),
         domain_locks.clone(),
         config.content_dir.clone(),
         crawls.clone(),
     );
     let _ = crawl_scheduler.bootstrap().await;
-    let importer = ImporterHandle::new(pool.clone(), crawl_scheduler.clone(), imports.clone());
+    let importer = ImporterHandle::new(db.clone(), crawl_scheduler.clone(), imports.clone());
 
     let ip_source_extension = config.ip_source.0.clone().into_extension();
 
@@ -154,7 +154,7 @@ async fn main() -> Result<()> {
         .route("/reset-password", post(handlers::reset_password::post))
         .nest_service("/static", ServeDir::new("static"))
         .with_state(AppState {
-            pool,
+            db,
             config,
             log_receiver,
             crawls,

@@ -126,14 +126,14 @@ pub fn reset_password_page(
 }
 
 pub async fn get(
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
     hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
     query: Query<ResetPasswordQuery>,
 ) -> Result<Response> {
     if let Some(token_id) = query.token_id {
         info!(token_id = %token_id.as_uuid(), "get with token_id");
-        let token = match UserPasswordResetToken::get(&pool, token_id.as_uuid()).await {
+        let token = match UserPasswordResetToken::get(&db, token_id.as_uuid()).await {
             Ok(token) => token,
             Err(err) => {
                 if let Error::NotFoundUuid(_, _) = err {
@@ -158,7 +158,7 @@ pub async fn get(
             }))
         } else {
             info!(token_id = %token.token_id, "token valid, showing reset password form");
-            let user = User::get(&pool, token.user_id).await?;
+            let user = User::get(&db, token.user_id).await?;
             Ok(reset_password_page(ResetPasswordPageProps {
                 hx_target,
                 layout,
@@ -181,7 +181,7 @@ pub async fn get(
 }
 
 pub async fn post(
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
     State(mailer): State<SmtpTransport>,
     State(config): State<Config>,
     SecureClientIp(ip): SecureClientIp,
@@ -203,7 +203,7 @@ pub async fn post(
             ..Default::default()
         }));
     }
-    let token = match UserPasswordResetToken::get(&pool, reset_password.token).await {
+    let token = match UserPasswordResetToken::get(&db, reset_password.token).await {
         Ok(token) => token,
         Err(err) => {
             if let Error::NotFoundUuid(_, _) = err {
@@ -241,7 +241,7 @@ pub async fn post(
             ..Default::default()
         }));
     }
-    let user = match User::get(&pool, token.user_id).await {
+    let user = match User::get(&db, token.user_id).await {
         Ok(user) => user,
         Err(err) => {
             if let Error::NotFoundString(_, _) = err {
@@ -266,7 +266,7 @@ pub async fn post(
         }
     };
     info!(user_id = %user.user_id, "user exists with verified email, resetting password");
-    let mut tx = pool.begin().await?;
+    let mut tx = db.begin().await?;
     UserPasswordResetToken::delete(tx.as_mut(), reset_password.token).await?;
     let user = match user
         .update_password(

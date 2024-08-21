@@ -70,7 +70,7 @@ pub fn confirm_email_page(
 }
 
 pub async fn get(
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
     auth: AuthSession,
     hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
@@ -78,7 +78,7 @@ pub async fn get(
 ) -> Result<Response> {
     if let Some(token_id) = query.token_id {
         info!(token_id = %token_id.as_uuid(), "get with token_id");
-        let token = match UserEmailVerificationToken::get(&pool, token_id.as_uuid()).await {
+        let token = match UserEmailVerificationToken::get(&db, token_id.as_uuid()).await {
             Ok(token) => token,
             Err(err) => {
                 if let Error::NotFoundUuid(_, _) = err {
@@ -112,8 +112,8 @@ pub async fn get(
             }))
         } else {
             info!(token_id = %token.token_id, "token valid, verifying email");
-            User::verify_email(&pool, token.user_id).await?;
-            UserEmailVerificationToken::delete(&pool, token.token_id).await?;
+            User::verify_email(&db, token.user_id).await?;
+            UserEmailVerificationToken::delete(&db, token.token_id).await?;
             Ok(layout
                 .with_subtitle("confirm email")
                 .targeted(hx_target)
@@ -152,7 +152,7 @@ pub struct ConfirmEmail {
 }
 
 pub async fn post(
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
     State(mailer): State<SmtpTransport>,
     State(config): State<Config>,
     hx_target: Option<TypedHeader<HXTarget>>,
@@ -161,11 +161,11 @@ pub async fn post(
 ) -> Result<Response> {
     if let Some(token_id) = confirm_email.token {
         info!(%token_id, "posted with token_id");
-        let token = UserEmailVerificationToken::get(&pool, token_id).await?;
-        let user = User::get(&pool, token.user_id).await?;
+        let token = UserEmailVerificationToken::get(&db, token_id).await?;
+        let user = User::get(&db, token.user_id).await?;
         if !user.email_verified {
             info!(user_id = %user.user_id, "user exists, resending confirmation email");
-            send_confirmation_email(pool, mailer, config, user);
+            send_confirmation_email(db, mailer, config, user);
         } else {
             warn!(user_id = %user.user_id, "confirm email submitted for already verified user, skip resend");
         }
@@ -184,10 +184,10 @@ pub async fn post(
             }));
     }
     if let Some(email) = confirm_email.email {
-        if let Ok(user) = User::get_by_email(&pool, email).await {
+        if let Ok(user) = User::get_by_email(&db, email).await {
             if !user.email_verified {
                 info!(user_id = %user.user_id, "user exists, resending confirmation email");
-                send_confirmation_email(pool, mailer, config, user);
+                send_confirmation_email(db, mailer, config, user);
             } else {
                 warn!(user_id = %user.user_id, "confirm email submitted for already verified user, skip resend");
             }

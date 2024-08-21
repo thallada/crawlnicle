@@ -97,7 +97,7 @@ pub async fn main() -> Result<()> {
 
     tracing_subscriber::fmt::init();
 
-    let pool = PgPoolOptions::new()
+    let db = PgPoolOptions::new()
         .max_connections(env::var("DATABASE_MAX_CONNECTIONS")?.parse()?)
         .connect(&env::var("DATABASE_URL")?)
         .await?;
@@ -108,7 +108,7 @@ pub async fn main() -> Result<()> {
     match cli.commands {
         Commands::AddFeed(args) => {
             let feed = Feed::create(
-                &pool,
+                &db,
                 CreateFeed {
                     title: args.title,
                     url: args.url,
@@ -119,12 +119,12 @@ pub async fn main() -> Result<()> {
             info!("Created feed with id {}", Base62Uuid::from(feed.feed_id));
         }
         Commands::DeleteFeed(args) => {
-            Feed::delete(&pool, args.id).await?;
+            Feed::delete(&db, args.id).await?;
             info!("Deleted feed with id {}", Base62Uuid::from(args.id));
         }
         Commands::AddEntry(args) => {
             let entry = Entry::create(
-                &pool,
+                &db,
                 CreateEntry {
                     title: args.title,
                     url: args.url,
@@ -137,7 +137,7 @@ pub async fn main() -> Result<()> {
             info!("Created entry with id {}", Base62Uuid::from(entry.entry_id));
         }
         Commands::DeleteEntry(args) => {
-            Entry::delete(&pool, args.id).await?;
+            Entry::delete(&db, args.id).await?;
             info!("Deleted entry with id {}", Base62Uuid::from(args.id));
         }
         Commands::Crawl(CrawlFeed { id }) => {
@@ -147,7 +147,7 @@ pub async fn main() -> Result<()> {
             // server is running, it will *not* serialize same-domain requests with it.
             let domain_locks = DomainLocks::new();
             let feed_crawler = FeedCrawlerHandle::new(
-                pool.clone(),
+                db.clone(),
                 client.clone(),
                 domain_locks.clone(),
                 env::var("CONTENT_DIR")?,

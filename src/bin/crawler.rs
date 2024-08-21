@@ -1,19 +1,17 @@
-use anyhow::{anyhow, Result};
-use apalis::cron::{CronStream, Schedule};
 use apalis::layers::retry::{RetryLayer, RetryPolicy};
 use apalis::layers::tracing::TraceLayer;
 use apalis::prelude::*;
-use apalis::redis::RedisStorage;
+use apalis_cron::{CronStream, Schedule};
+use apalis_redis::RedisStorage;
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use lib::actors::crawl_scheduler::CrawlSchedulerError;
 use lib::jobs::AsyncJob;
 use lib::models::feed::{Feed, GetFeedsOptions};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::str::FromStr;
 use std::sync::Arc;
-use tower::ServiceBuilder;
+use thiserror::Error;
 use tracing::{info, instrument};
 
 use dotenvy::dotenv;
@@ -29,26 +27,32 @@ impl From<DateTime<Utc>> for Crawl {
     }
 }
 
-impl Job for Crawl {
-    const NAME: &'static str = "apalis::Crawl";
+#[derive(Debug, Error)]
+enum CrawlError {
+    #[error("error fetching feeds")]
+    FetchFeedsError(#[from] sqlx::Error),
+    #[error("error queueing crawl feed job")]
+    QueueJobError(String),
 }
 
+#[derive(Clone)]
 struct State {
     pool: PgPool,
     apalis: RedisStorage<AsyncJob>,
 }
 
 #[instrument(skip_all)]
-pub async fn crawl_fn(job: Crawl, state: Data<Arc<State>>) -> Result<()> {
+pub async fn crawl_fn(job: Crawl, state: Data<Arc<State>>) -> Result<(), CrawlError> {
     tracing::info!(job = ?job, "crawl");
     let mut apalis = (state.apalis).clone();
     let mut options = GetFeedsOptions::default();
     loop {
         info!("fetching feeds before: {:?}", options.before);
+        // TODO: filter to feeds where:
+        // now >= feed.last_crawled_at + feed.crawl_interval_minutes
+        // may need more indices...
         let feeds = match Feed::get_all(&state.pool, &options).await {
-            Err(err) => {
-                return Err(anyhow!(err));
-            }
+            Err(err) => return Err(CrawlError::FetchFeedsError(err)),
             Ok(feeds) if feeds.is_empty() => {
                 info!("no more feeds found");
                 break;
@@ -62,14 +66,15 @@ pub async fn crawl_fn(job: Crawl, state: Data<Arc<State>>) -> Result<()> {
             // self.spawn_crawler_loop(feed, respond_to.clone());
             apalis
                 .push(AsyncJob::HelloWorld(feed.feed_id.to_string()))
-                .await?;
+                .await
+                .map_err(|err| CrawlError::QueueJobError(err.to_string()))?;
         }
     }
     Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     dotenv().ok();
     let config = Config::parse();
     let _guard = init_worker_tracing()?;
@@ -80,24 +85,24 @@ async fn main() -> Result<()> {
         .connect(&config.database_url)
         .await?;
 
-    // TODO: use redis_pool from above instead of making a new connection
+    // TODO: create connection from redis_pool for each job instead using a single connection
     // See: https://github.com/geofmureithi/apalis/issues/290
-    let redis_conn = apalis::redis::connect(config.redis_url.clone()).await?;
-    let apalis_config = apalis::redis::Config::default();
-    let mut apalis: RedisStorage<AsyncJob> =
-        RedisStorage::new_with_config(redis_conn, apalis_config);
+    let redis_conn = apalis_redis::connect(config.redis_url.clone()).await?;
+    let apalis_config = apalis_redis::Config::default();
+    let apalis_storage = RedisStorage::new_with_config(redis_conn, apalis_config);
+
+    let state = Arc::new(State {
+        pool,
+        apalis: apalis_storage.clone(),
+    });
 
     let schedule = Schedule::from_str("0 * * * * *").unwrap();
-    // let service = ServiceBuilder::new()
-    //     .layer(RetryLayer::new(RetryPolicy::default()))
-    //     .layer(TraceLayer::new())
-    //     .service(service_fn(crawl_fn));
 
     let worker = WorkerBuilder::new("crawler")
-        .stream(CronStream::new(schedule).into_stream())
         .layer(RetryLayer::new(RetryPolicy::default()))
         .layer(TraceLayer::new())
-        .data(Arc::new(State { pool, apalis }))
+        .data(state)
+        .backend(CronStream::new(schedule))
         .build_fn(crawl_fn);
 
     Monitor::<TokioExecutor>::new()

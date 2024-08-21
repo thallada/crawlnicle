@@ -17,7 +17,7 @@ use crate::uuid::Base62Uuid;
 // TODO: put in config
 const USER_EMAIL_VERIFICATION_TOKEN_EXPIRATION: Duration = Duration::from_secs(24 * 60 * 60);
 
-pub fn send_confirmation_email(pool: PgPool, mailer: SmtpTransport, config: Config, user: User) {
+pub fn send_confirmation_email(db: PgPool, mailer: SmtpTransport, config: Config, user: User) {
     tokio::spawn(async move {
         let user_email_address = match user.email.parse() {
             Ok(address) => address,
@@ -28,7 +28,7 @@ pub fn send_confirmation_email(pool: PgPool, mailer: SmtpTransport, config: Conf
         };
         let mailbox = Mailbox::new(user.name.clone(), user_email_address);
         let token = match UserEmailVerificationToken::create(
-            &pool,
+            &db,
             CreateUserEmailVerificationToken {
                 user_id: user.user_id,
                 expires_at: Utc::now() + USER_EMAIL_VERIFICATION_TOKEN_EXPIRATION,
@@ -42,11 +42,10 @@ pub fn send_confirmation_email(pool: PgPool, mailer: SmtpTransport, config: Conf
                 return;
             }
         };
-        let mut confirm_link = config
-            .public_url
-            .clone();
+        let mut confirm_link = config.public_url.clone();
         confirm_link.set_path("confirm-email");
-        confirm_link.query_pairs_mut()
+        confirm_link
+            .query_pairs_mut()
             .append_pair("token_id", &Base62Uuid::from(token.token_id).to_string());
         let confirm_link = confirm_link.as_str();
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use apalis::redis::RedisStorage;
+use apalis_redis::RedisStorage;
 use axum::extract::FromRef;
 use bytes::Bytes;
 use lettre::SmtpTransport;
@@ -41,7 +41,7 @@ pub type Imports = Arc<Mutex<HashMap<Uuid, broadcast::Receiver<ImporterHandleMes
 
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: PgPool,
+    pub db: PgPool,
     pub config: Config,
     pub log_receiver: watch::Receiver<Bytes>,
     pub crawls: Crawls,
@@ -56,7 +56,7 @@ pub struct AppState {
 
 impl FromRef<AppState> for PgPool {
     fn from_ref(state: &AppState) -> Self {
-        state.pool.clone()
+        state.db.clone()
     }
 }
 

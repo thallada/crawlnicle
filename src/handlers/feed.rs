@@ -28,17 +28,17 @@ use crate::uuid::Base62Uuid;
 
 pub async fn get(
     Path(id): Path<Base62Uuid>,
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
     hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
 ) -> Result<Response> {
-    let feed = Feed::get(&pool, id.as_uuid()).await?;
+    let feed = Feed::get(&db, id.as_uuid()).await?;
     let options = GetEntriesOptions {
         feed_id: Some(feed.feed_id),
         ..Default::default()
     };
     let title = feed.title.unwrap_or_else(|| "Untitled Feed".to_string());
-    let entries = Entry::get_all(&pool, &options).await?;
+    let entries = Entry::get_all(&db, &options).await?;
     let delete_url = format!("/feed/{}/delete", id);
     Ok(layout.with_subtitle(&title).targeted(hx_target).render(html! {
         header class="mb-4 flex flex-row items-center gap-4" {
@@ -115,13 +115,13 @@ impl IntoResponse for AddFeedError {
 }
 
 pub async fn post(
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
     State(crawls): State<Crawls>,
     State(crawl_scheduler): State<CrawlSchedulerHandle>,
     Form(add_feed): Form<AddFeed>,
 ) -> AddFeedResult<Response> {
     let feed = Feed::create(
-        &pool,
+        &db,
         CreateFeed {
             title: add_feed.title,
             url: add_feed.url.clone(),
@@ -233,7 +233,7 @@ pub async fn stream(
     ))
 }
 
-pub async fn delete(State(pool): State<PgPool>, Path(id): Path<Base62Uuid>) -> Result<Redirect> {
-    Feed::delete(&pool, id.as_uuid()).await?;
+pub async fn delete(State(db): State<PgPool>, Path(id): Path<Base62Uuid>) -> Result<Redirect> {
+    Feed::delete(&db, id.as_uuid()).await?;
     Ok(Redirect::to("/feeds"))
 }

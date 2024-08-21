@@ -10,12 +10,12 @@ use crate::models::entry::Entry;
 use crate::partials::{entry_list::entry_list, layout::Layout};
 
 pub async fn get(
-    State(pool): State<PgPool>,
+    State(db): State<PgPool>,
     hx_target: Option<TypedHeader<HXTarget>>,
     layout: Layout,
 ) -> Result<Response> {
     let options = Default::default();
-    let entries = Entry::get_all(&pool, &options).await?;
+    let entries = Entry::get_all(&db, &options).await?;
     Ok(layout.targeted(hx_target).render(html! {
         ul class="list-none flex flex-col gap-4" {
             (entry_list(entries, &options, true))

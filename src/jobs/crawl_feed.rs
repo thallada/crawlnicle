@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-mod crawl_feed;
+use crate::models::feed::Feed;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum AsyncJob {
-    HelloWorld(String),
+pub struct CrawlFeedJob {
+    pub feed: Feed,
 }
