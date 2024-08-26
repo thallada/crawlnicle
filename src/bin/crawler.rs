@@ -5,8 +5,7 @@ use apalis_cron::{CronStream, Schedule};
 use apalis_redis::RedisStorage;
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use lib::jobs::AsyncJob;
-use lib::models::feed::{Feed, GetFeedsOptions};
+use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::str::FromStr;
@@ -14,9 +13,10 @@ use std::sync::Arc;
 use thiserror::Error;
 use tracing::{info, instrument};
 
-use dotenvy::dotenv;
 use lib::config::Config;
+use lib::jobs::{AsyncJob, CrawlFeedJob};
 use lib::log::init_worker_tracing;
+use lib::models::feed::{Feed, GetFeedsOptions};
 
 #[derive(Default, Debug, Clone)]
 struct Crawl(DateTime<Utc>);
@@ -64,8 +64,9 @@ pub async fn crawl_fn(job: Crawl, state: Data<Arc<State>>) -> Result<(), CrawlEr
 
         for feed in feeds.into_iter() {
             // self.spawn_crawler_loop(feed, respond_to.clone());
+            // TODO: implement uniqueness on jobs per feed for ~1 minute
             apalis
-                .push(AsyncJob::HelloWorld(feed.feed_id.to_string()))
+                .push(AsyncJob::CrawlFeed(CrawlFeedJob { feed }))
                 .await
                 .map_err(|err| CrawlError::QueueJobError(err.to_string()))?;
         }

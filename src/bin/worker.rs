@@ -1,17 +1,15 @@
 use anyhow::Result;
+use apalis::layers::retry::RetryPolicy;
 use apalis::layers::tracing::TraceLayer;
 use apalis::prelude::*;
 use apalis_redis::RedisStorage;
 use clap::Parser;
-
 use dotenvy::dotenv;
-use lib::config::Config;
-use lib::jobs::AsyncJob;
-use lib::log::init_worker_tracing;
+use tower::retry::RetryLayer;
 
-pub async fn worker_fn(job: AsyncJob) {
-    tracing::info!(job = ?job, "Hello, world!");
-}
+use lib::config::Config;
+use lib::jobs::{handle_async_job, AsyncJob};
+use lib::log::init_worker_tracing;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -28,9 +26,10 @@ async fn main() -> Result<()> {
     Monitor::<TokioExecutor>::new()
         .register_with_count(2, {
             WorkerBuilder::new("worker")
+                .layer(RetryLayer::new(RetryPolicy::default()))
                 .layer(TraceLayer::new())
                 .backend(apalis_storage)
-                .build_fn(worker_fn)
+                .build_fn(handle_async_job)
         })
         .run()
         .await
