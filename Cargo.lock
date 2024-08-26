@@ -605,12 +605,9 @@ dependencies = [
 
 [[package]]
 name = "cookie-factory"
-version = "0.3.3"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9885fa71e26b8ab7855e2ec7cae6e9b380edff76cd052e07c683a0319d51b3a2"
-dependencies = [
- "futures",
-]
+checksum = "396de984970346b0d9e93d1415082923c679e5ae5c3ee3dcbd104f5610af126b"
 
 [[package]]
 name = "core-foundation"
@@ -658,6 +655,7 @@ dependencies = [
  "clap",
  "dotenvy",
  "feed-rs",
+ "fred 9.1.2",
  "futures",
  "headers",
  "http 1.1.0",
@@ -668,6 +666,7 @@ dependencies = [
  "once_cell",
  "opml",
  "password-auth",
+ "rand",
  "readability",
  "reqwest 0.12.4",
  "serde",
@@ -1014,7 +1013,33 @@ dependencies = [
  "log",
  "parking_lot",
  "rand",
- "redis-protocol",
+ "redis-protocol 4.1.0",
+ "semver",
+ "socket2",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "url",
+ "urlencoding",
+]
+
+[[package]]
+name = "fred"
+version = "9.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "152397076bd317aa06bca9666e954ad15cde1a8f17b6ea4b007cf0bfc074d1d0"
+dependencies = [
+ "arc-swap",
+ "async-trait",
+ "bytes",
+ "bytes-utils",
+ "crossbeam-queue",
+ "float-cmp",
+ "futures",
+ "log",
+ "parking_lot",
+ "rand",
+ "redis-protocol 5.0.1",
  "semver",
  "socket2",
  "tokio",
@@ -2534,6 +2559,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "redis-protocol"
+version = "5.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65deb7c9501fbb2b6f812a30d59c0253779480853545153a51d8e9e444ddc99f"
+dependencies = [
+ "bytes",
+ "bytes-utils",
+ "cookie-factory",
+ "crc16",
+ "log",
+ "nom",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3684,7 +3723,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0460effd120251714fae61067fa3e8b2a3c8202501cdcae375d4bd14194c85cf"
 dependencies = [
  "async-trait",
- "fred",
+ "fred 8.0.6",
  "rmp-serde",
  "thiserror",
  "time",

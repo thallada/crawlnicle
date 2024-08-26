@@ -33,10 +33,10 @@ impl DomainLocks {
     }
 
     /// Run the passed function `f` while holding a lock that gives exclusive access to the passed
-    /// domain. If another task running `run_request` currently has the lock to the 
+    /// domain. If another task running `run_request` currently has the lock to the
     /// `DomainLocksMap` or the lock to the domain passed, then this function will wait until that
-    /// other task is done. Once it has access to the lock, if it has been less than one second 
-    /// since the last request to the domain, then this function will sleep until one second has 
+    /// other task is done. Once it has access to the lock, if it has been less than one second
+    /// since the last request to the domain, then this function will sleep until one second has
     /// passed before calling `f`.
     pub async fn run_request<F, T>(&self, domain: &str, f: F) -> T
     where

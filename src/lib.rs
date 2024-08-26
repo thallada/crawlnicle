@@ -3,6 +3,7 @@ pub mod api_response;
 pub mod auth;
 pub mod config;
 pub mod domain_locks;
+pub mod domain_request_limiter;
 pub mod error;
 pub mod handlers;
 pub mod headers;

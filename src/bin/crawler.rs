@@ -66,7 +66,9 @@ pub async fn crawl_fn(job: Crawl, state: Data<Arc<State>>) -> Result<(), CrawlEr
             // self.spawn_crawler_loop(feed, respond_to.clone());
             // TODO: implement uniqueness on jobs per feed for ~1 minute
             apalis
-                .push(AsyncJob::CrawlFeed(CrawlFeedJob { feed }))
+                .push(AsyncJob::CrawlFeed(CrawlFeedJob {
+                    feed_id: feed.feed_id,
+                }))
                 .await
                 .map_err(|err| CrawlError::QueueJobError(err.to_string()))?;
         }
