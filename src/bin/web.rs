@@ -114,7 +114,7 @@ async fn main() -> Result<()> {
         config.content_dir.clone(),
         crawls.clone(),
     );
-    let _ = crawl_scheduler.bootstrap().await;
+    // let _ = crawl_scheduler.bootstrap().await;
     let importer = ImporterHandle::new(db.clone(), crawl_scheduler.clone(), imports.clone());
 
     let ip_source_extension = config.ip_source.0.clone().into_extension();

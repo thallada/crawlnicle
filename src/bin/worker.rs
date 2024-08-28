@@ -49,6 +49,8 @@ async fn main() -> Result<()> {
                 .data(http_client)
                 .data(db)
                 .data(domain_request_limiter)
+                .data(config)
+                .data(apalis_storage.clone())
                 .backend(apalis_storage)
                 .build_fn(handle_async_job)
         })

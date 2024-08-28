@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 
 use anyhow::{anyhow, Result};
 use apalis::prelude::*;
+use apalis_redis::RedisStorage;
 use chrono::{Duration, Utc};
 use feed_rs::parser;
 use http::{header, HeaderMap, StatusCode};
@@ -13,6 +14,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::domain_request_limiter::DomainRequestLimiter;
+use crate::jobs::{AsyncJob, CrawlEntryJob};
 use crate::models::entry::{CreateEntry, Entry};
 use crate::models::feed::{Feed, MAX_CRAWL_INTERVAL_MINUTES, MIN_CRAWL_INTERVAL_MINUTES};
 
@@ -27,6 +29,7 @@ pub async fn crawl_feed(
     http_client: Data<Client>,
     db: Data<PgPool>,
     domain_request_limiter: Data<DomainRequestLimiter>,
+    apalis: Data<RedisStorage<AsyncJob>>,
 ) -> Result<()> {
     let mut feed = Feed::get(&*db, feed_id).await?;
     info!("got feed from db");
@@ -149,7 +152,7 @@ pub async fn crawl_feed(
     for entry in parsed_feed.entries {
         let entry_span = info_span!("entry", id = entry.id);
         let _entry_span_guard = entry_span.enter();
-        if let Some(link) = entry.links.get(0) {
+        if let Some(link) = entry.links.first() {
             // if no scraped or feed date is available, fallback to the current time
             let published_at = entry.published.unwrap_or_else(Utc::now);
             let entry = CreateEntry {
@@ -171,18 +174,12 @@ pub async fn crawl_feed(
     info!(new = new.len(), updated = updated.len(), "saved entries");
 
     for entry in new {
-        // TODO: queue the entry crawls
-        //
-        // let entry_crawler = EntryCrawlerHandle::new(
-        //     self.pool.clone(),
-        //     self.client.clone(),
-        //     self.domain_locks.clone(),
-        //     self.content_dir.clone(),
-        // );
-        // let mut entry_receiver = entry_crawler.crawl(entry).await;
-        // while let Ok(EntryCrawlerHandleMessage::Entry(result)) = entry_receiver.recv().await {
-        //     let _ = respond_to.send(FeedCrawlerHandleMessage::Entry(result));
-        // }
+        (*apalis)
+            .clone() // TODO: clone bad?
+            .push(AsyncJob::CrawlEntry(CrawlEntryJob {
+                entry_id: entry.entry_id,
+            }))
+            .await?;
     }
     Ok(())
 }
