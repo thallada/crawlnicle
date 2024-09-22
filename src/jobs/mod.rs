@@ -9,9 +9,11 @@ use tracing::{error, info, instrument};
 
 mod crawl_entry;
 mod crawl_feed;
+mod import_opml;
 
 pub use crawl_entry::CrawlEntryJob;
 pub use crawl_feed::CrawlFeedJob;
+pub use import_opml::ImportOpmlJob;
 
 use crate::{config::Config, domain_request_limiter::DomainRequestLimiter};
 
@@ -20,6 +22,7 @@ pub enum AsyncJob {
     HelloWorld(String),
     CrawlFeed(CrawlFeedJob),
     CrawlEntry(CrawlEntryJob),
+    ImportOpml(ImportOpmlJob),
 }
 
 #[derive(Debug, Error)]
@@ -53,6 +56,7 @@ pub async fn handle_async_job(
             crawl_entry::crawl_entry(job, http_client, db, domain_request_limiter, config, redis)
                 .await
         }
+        AsyncJob::ImportOpml(job) => import_opml::import_opml(job, db, apalis, redis).await,
     };
 
     match result {
