@@ -4,6 +4,7 @@ use std::sync::Arc;
 use apalis_redis::RedisStorage;
 use axum::extract::FromRef;
 use bytes::Bytes;
+use fred::clients::RedisPool;
 use lettre::SmtpTransport;
 use reqwest::Client;
 use sqlx::PgPool;
@@ -14,6 +15,7 @@ use crate::actors::crawl_scheduler::{CrawlSchedulerHandle, CrawlSchedulerHandleM
 use crate::actors::importer::{ImporterHandle, ImporterHandleMessage};
 use crate::config::Config;
 use crate::domain_locks::DomainLocks;
+use crate::domain_request_limiter::DomainRequestLimiter;
 use crate::jobs::AsyncJob;
 
 /// A map of feed IDs to a channel receiver for the active `CrawlScheduler` running a feed crawl
@@ -46,12 +48,14 @@ pub struct AppState {
     pub log_receiver: watch::Receiver<Bytes>,
     pub crawls: Crawls,
     pub domain_locks: DomainLocks,
+    pub domain_request_limiter: DomainRequestLimiter,
     pub client: Client,
     pub crawl_scheduler: CrawlSchedulerHandle,
     pub importer: ImporterHandle,
     pub imports: Imports,
     pub mailer: SmtpTransport,
     pub apalis: RedisStorage<AsyncJob>,
+    pub redis: RedisPool,
 }
 
 impl FromRef<AppState> for PgPool {
@@ -81,6 +85,12 @@ impl FromRef<AppState> for Crawls {
 impl FromRef<AppState> for DomainLocks {
     fn from_ref(state: &AppState) -> Self {
         state.domain_locks.clone()
+    }
+}
+
+impl FromRef<AppState> for DomainRequestLimiter {
+    fn from_ref(state: &AppState) -> Self {
+        state.domain_request_limiter.clone()
     }
 }
 
@@ -117,5 +127,11 @@ impl FromRef<AppState> for SmtpTransport {
 impl FromRef<AppState> for RedisStorage<AsyncJob> {
     fn from_ref(state: &AppState) -> Self {
         state.apalis.clone()
+    }
+}
+
+impl FromRef<AppState> for RedisPool {
+    fn from_ref(state: &AppState) -> Self {
+        state.redis.clone()
     }
 }

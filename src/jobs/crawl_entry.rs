@@ -5,6 +5,7 @@ use ammonia::clean;
 use anyhow::{anyhow, Result};
 use apalis::prelude::*;
 use bytes::Buf;
+use fred::prelude::*;
 use readability::extractor;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -29,6 +30,7 @@ pub async fn crawl_entry(
     db: Data<PgPool>,
     domain_request_limiter: Data<DomainRequestLimiter>,
     config: Data<Config>,
+    redis: Data<RedisPool>,
 ) -> Result<()> {
     let entry = Entry::get(&*db, entry_id).await?;
     info!("got entry from db");
@@ -58,5 +60,9 @@ pub async fn crawl_entry(
     fs::write(content_dir.join(format!("{}.html", id)), content)?;
     fs::write(content_dir.join(format!("{}.txt", id)), article.text)?;
     info!("saved content to filesystem");
+    redis
+        .next()
+        .publish("entries", entry_id.to_string())
+        .await?;
     Ok(())
 }

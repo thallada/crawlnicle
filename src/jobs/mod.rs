@@ -1,5 +1,6 @@
 use apalis::prelude::*;
 use apalis_redis::RedisStorage;
+use fred::prelude::*;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -27,18 +28,17 @@ pub enum AsyncJobError {
     JobError(#[from] anyhow::Error),
 }
 
-#[instrument(skip_all, fields(worker_id = %worker_id))]
+#[instrument(skip_all, fields(worker_id = ?worker_id, task_id = ?task_id))]
 pub async fn handle_async_job(
     job: AsyncJob,
-    worker_id: WorkerId,
-    // TODO: add task_id to tracing instrumentation context
-    // it casuses a panic in 0.6.0 currently, see: https://github.com/geofmureithi/apalis/issues/398
-    // task_id: Data<TaskId>,
+    worker_id: Data<WorkerId>,
+    task_id: Data<TaskId>,
     http_client: Data<Client>,
     db: Data<PgPool>,
     domain_request_limiter: Data<DomainRequestLimiter>,
     config: Data<Config>,
     apalis: Data<RedisStorage<AsyncJob>>,
+    redis: Data<RedisPool>,
 ) -> Result<(), AsyncJobError> {
     let result = match job {
         AsyncJob::HelloWorld(name) => {
@@ -46,10 +46,12 @@ pub async fn handle_async_job(
             Ok(())
         }
         AsyncJob::CrawlFeed(job) => {
-            crawl_feed::crawl_feed(job, http_client, db, domain_request_limiter, apalis).await
+            crawl_feed::crawl_feed(job, http_client, db, domain_request_limiter, apalis, redis)
+                .await
         }
         AsyncJob::CrawlEntry(job) => {
-            crawl_entry::crawl_entry(job, http_client, db, domain_request_limiter, config).await
+            crawl_entry::crawl_entry(job, http_client, db, domain_request_limiter, config, redis)
+                .await
         }
     };
 

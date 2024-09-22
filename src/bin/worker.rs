@@ -30,9 +30,8 @@ async fn main() -> Result<()> {
 
     let redis_config = RedisConfig::from_url(&config.redis_url)?;
     let redis_pool = RedisPool::new(redis_config, None, None, None, 5)?;
-    redis_pool.connect();
-    redis_pool.wait_for_connect().await?;
-    let domain_request_limiter = DomainRequestLimiter::new(redis_pool, 10, 5, 100, 0.5);
+    redis_pool.init().await?;
+    let domain_request_limiter = DomainRequestLimiter::new(redis_pool.clone(), 10, 5, 100, 0.5);
 
     let http_client = Client::builder().user_agent(USER_AGENT).build()?;
     let db = PgPoolOptions::new()
@@ -51,6 +50,7 @@ async fn main() -> Result<()> {
                 .data(domain_request_limiter)
                 .data(config)
                 .data(apalis_storage.clone())
+                .data(redis_pool)
                 .backend(apalis_storage)
                 .build_fn(handle_async_job)
         })

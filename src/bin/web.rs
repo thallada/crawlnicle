@@ -16,6 +16,7 @@ use base64::prelude::*;
 use bytes::Bytes;
 use clap::Parser;
 use dotenvy::dotenv;
+use fred::prelude::*;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::SmtpTransport;
 use notify::Watcher;
@@ -28,11 +29,18 @@ use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tower_livereload::LiveReloadLayer;
 use tower_sessions::cookie::Key;
-use tower_sessions_redis_store::{fred::prelude::*, RedisStore};
+use tower_sessions_redis_store::{
+    fred::{
+        interfaces::ClientLike as TowerSessionsRedisClientLike,
+        prelude::{RedisConfig as TowerSessionsRedisConfig, RedisPool as TowerSessionsRedisPool},
+    },
+    RedisStore,
+};
 use tracing::debug;
 
 use lib::config::Config;
 use lib::domain_locks::DomainLocks;
+use lib::domain_request_limiter::DomainRequestLimiter;
 use lib::handlers;
 use lib::jobs::AsyncJob;
 use lib::log::init_tracing;
@@ -75,8 +83,20 @@ async fn main() -> Result<()> {
     let redis_config = RedisConfig::from_url(&config.redis_url)?;
     let redis_pool = RedisPool::new(redis_config, None, None, None, config.redis_pool_size)?;
     redis_pool.init().await?;
+    let domain_request_limiter = DomainRequestLimiter::new(redis_pool.clone(), 10, 5, 100, 0.5);
 
-    let session_store = RedisStore::new(redis_pool);
+    // TODO: is it possible to use the same fred RedisPool that the web app uses?
+    let sessions_redis_config = TowerSessionsRedisConfig::from_url(&config.redis_url)?;
+    let sessions_redis_pool = TowerSessionsRedisPool::new(
+        sessions_redis_config,
+        None,
+        None,
+        None,
+        config.redis_pool_size,
+    )?;
+    sessions_redis_pool.init().await?;
+
+    let session_store = RedisStore::new(sessions_redis_pool);
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(!cfg!(debug_assertions))
         .with_expiry(Expiry::OnInactivity(Duration::days(
@@ -159,12 +179,14 @@ async fn main() -> Result<()> {
             log_receiver,
             crawls,
             domain_locks,
+            domain_request_limiter,
             client,
             crawl_scheduler,
             importer,
             imports,
             mailer,
             apalis,
+            redis: redis_pool,
         })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .layer(auth_layer)

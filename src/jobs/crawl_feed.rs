@@ -5,6 +5,7 @@ use apalis::prelude::*;
 use apalis_redis::RedisStorage;
 use chrono::{Duration, Utc};
 use feed_rs::parser;
+use fred::prelude::*;
 use http::{header, HeaderMap, StatusCode};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -30,6 +31,7 @@ pub async fn crawl_feed(
     db: Data<PgPool>,
     domain_request_limiter: Data<DomainRequestLimiter>,
     apalis: Data<RedisStorage<AsyncJob>>,
+    redis: Data<RedisPool>,
 ) -> Result<()> {
     let mut feed = Feed::get(&*db, feed_id).await?;
     info!("got feed from db");
@@ -181,5 +183,7 @@ pub async fn crawl_feed(
             }))
             .await?;
     }
+
+    redis.next().publish("feeds", feed_id.to_string()).await?;
     Ok(())
 }
