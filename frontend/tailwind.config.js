@@ -1,8 +1,8 @@
-const plugin = require('tailwindcss/plugin');
+import plugin from 'tailwindcss/plugin';
 
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./src/**/*.rs'],
+  content: ['../src/**/*.rs'],
   theme: {
     extend: {},
   },

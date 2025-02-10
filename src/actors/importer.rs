@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::actors::crawl_scheduler::{CrawlSchedulerHandle, CrawlSchedulerHandleMessage};
 use crate::error::Error;
-use crate::models::feed::{Feed, CreateFeed};
+use crate::models::feed::{CreateFeed, Feed};
 use crate::state::Imports;
 use crate::uuid::Base62Uuid;
 
